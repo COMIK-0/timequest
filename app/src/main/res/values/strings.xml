@@ -1,0 +1,118 @@
+<resources>
+    <string name="app_name">TimeQuest</string>
+
+    <string name="dashboard_title">Главная</string>
+    <string name="tasks_title">Задачи</string>
+    <string name="statistics_title">Статистика</string>
+    <string name="profile_title">Профиль</string>
+
+    <string name="dashboard_placeholder">Здесь позже появятся уровень, серия дней, дневная цель и ближайшие задачи.</string>
+    <string name="statistics_placeholder">Здесь позже появится статистика продуктивности и прогресс за последние 7 дней.</string>
+    <string name="profile_placeholder">Здесь позже появятся достижения, уровень и краткая сводка прогресса.</string>
+    <string name="open_tasks">Открыть задачи</string>
+
+    <string name="add_task_title">Добавить задачу</string>
+    <string name="edit_task_title">Редактировать задачу</string>
+    <string name="add_task">Добавить задачу</string>
+    <string name="add_short">+</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="edit_task">Редактировать задачу</string>
+    <string name="delete_task">Удалить задачу</string>
+
+    <string name="filter_all">Все</string>
+    <string name="filter_active">Активные</string>
+    <string name="filter_completed">Выполненные</string>
+    <string name="no_tasks_yet">Пока нет задач. Нажмите кнопку ниже и добавьте первую.</string>
+
+    <string name="section_main_info">Основная информация</string>
+    <string name="section_planning">Планирование</string>
+    <string name="task_title_label">Название</string>
+    <string name="task_description_label">Описание</string>
+    <string name="task_category_label">Категория</string>
+    <string name="priority_label">Приоритет</string>
+    <string name="difficulty_label">Сложность</string>
+    <string name="estimated_time_label">Время выполнения, мин.</string>
+    <string name="due_date_label">Срок</string>
+    <string name="due_date_hint">Выберите дату</string>
+    <string name="required_field">Обязательное поле</string>
+
+    <string name="category_study">Учёба</string>
+    <string name="category_work">Работа</string>
+    <string name="category_home">Дом</string>
+    <string name="category_health">Здоровье</string>
+    <string name="category_finance">Финансы</string>
+    <string name="category_personal">Личное</string>
+    <string name="category_shopping">Покупки</string>
+    <string name="category_other">Другое</string>
+
+    <string name="priority_low">Низкий</string>
+    <string name="priority_medium">Средний</string>
+    <string name="priority_high">Высокий</string>
+    <string name="priority_low_full">Низкий приоритет</string>
+    <string name="priority_medium_full">Средний приоритет</string>
+    <string name="priority_high_full">Высокий приоритет</string>
+
+    <string name="difficulty_easy">Лёгкая</string>
+    <string name="difficulty_medium">Средняя</string>
+    <string name="difficulty_hard">Сложная</string>
+
+    <string name="select_due_date">Выбрать срок</string>
+    <string name="clear_due_date">Убрать срок</string>
+    <string name="no_due_date">Дата не выбрана</string>
+    <string name="date_picker_ok">Готово</string>
+
+    <string name="category_value">Категория: %1$s</string>
+    <string name="estimated_time_value">Время выполнения: %1$d мин.</string>
+    <string name="due_date_value">Срок: %1$s</string>
+
+    <string name="today_title">Сегодня</string>
+    <string name="dashboard_empty_state">Пока нет задач. Добавьте первую задачу, чтобы начать планирование.</string>
+    <string name="active_tasks_count">Активные задачи</string>
+    <string name="completed_today_count">Выполнено сегодня</string>
+    <string name="daily_progress">Прогресс на день</string>
+    <string name="daily_progress_value">%1$d из %2$d задач на сегодня</string>
+    <string name="nearest_deadline">Ближайший срок</string>
+    <string name="no_nearest_deadline">Пока нет задач со сроком.</string>
+    <string name="nearest_active_tasks">Ближайшие активные задачи</string>
+    <string name="task_with_date">%1$s — %2$s</string>
+    <string name="level_xp_title">Уровень и XP</string>
+    <string name="level_xp_placeholder">Подробная система уровней будет расширена на следующем этапе.</string>
+
+    <string name="total_tasks">Всего задач</string>
+    <string name="completed_tasks">Выполненные задачи</string>
+    <string name="completion_percentage">Процент выполнения</string>
+    <string name="tasks_by_category">Задачи по категориям</string>
+    <string name="tasks_by_priority">Задачи по приоритету</string>
+    <string name="completed_last_7_days">За 7 дней</string>
+    <string name="no_statistics_yet">Пока недостаточно данных для статистики.</string>
+
+    <string name="level_value">Уровень %1$d</string>
+    <string name="xp_value">%1$d XP</string>
+    <string name="current_streak">Серия дней</string>
+    <string name="streak_placeholder">Скоро</string>
+    <string name="achievements_title">Достижения</string>
+    <string name="achievement_first_done">Первое выполнение</string>
+    <string name="achievement_three_done">3 выполненные задачи</string>
+    <string name="achievement_seven_days">7 дней активности</string>
+    <string name="achievement_unlocked">Открыто</string>
+    <string name="achievement_locked">Впереди</string>
+
+    <string name="section_task_params">Параметры задачи</string>
+    <string name="section_deadline_time">Срок и время</string>
+    <string name="minutes_value">%1$d мин</string>
+    <string name="date_picker_title">Выбор срока</string>
+
+    <string name="sort_smart">По умному порядку</string>
+    <string name="sort_deadline">По сроку</string>
+    <string name="sort_priority">По приоритету</string>
+    <string name="sort_time">По времени</string>
+
+    <string name="recommended_plan_today">Рекомендуемый план на сегодня</string>
+    <string name="start_with_task">Начните с этого: %1$s</string>
+    <string name="no_recommended_tasks">На сегодня нет задач со сроком.</string>
+
+    <string name="notification_deadline_title">Срок сегодня</string>
+    <string name="notification_daily_title">План на сегодня</string>
+    <string name="notification_daily_text">Сегодня задач: %1$d. Начните с: %2$s</string>
+</resources>

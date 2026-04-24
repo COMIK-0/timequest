@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+.gradle-user-home/
+build/
+**/build/
+
+# Kotlin / Android Studio caches
+.kotlin/
+.idea/
+*.iml
+
+# Local machine settings
+local.properties
+
+# Generated files
+captures/
+externalNativeBuild/
+.cxx/
+
+# APK / bundle outputs
+*.apk
+*.aab
+*.ap_
+
+# Logs
+*.log
