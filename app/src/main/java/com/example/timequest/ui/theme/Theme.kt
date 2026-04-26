@@ -2,10 +2,13 @@ package com.example.timequest.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 
 private val LightColors = lightColorScheme(
     primary = PrimaryBlue,
@@ -13,6 +16,10 @@ private val LightColors = lightColorScheme(
     background = SoftBackground,
     surface = CardWhite,
     surfaceVariant = Color(0xFFE7ECF3),
+    primaryContainer = Color(0xFFDDE8FF),
+    secondaryContainer = Color(0xFFDDF4E9),
+    error = Color(0xFFB94A4A),
+    errorContainer = Color(0xFFFFDADA),
     onSurfaceVariant = Color(0xFF5B6472)
 )
 
@@ -20,7 +27,28 @@ private val DarkColors = darkColorScheme(
     primary = PrimaryBlueDark,
     secondary = AccentGreen,
     background = DarkBackground,
-    surface = DarkSurface
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceSoft,
+    surfaceContainer = DarkSurfaceHigh,
+    surfaceContainerHigh = DarkSurfaceSoft,
+    primaryContainer = Color(0xFF24345A),
+    secondaryContainer = Color(0xFF183B32),
+    error = DangerRed,
+    errorContainer = Color(0xFF4A2529),
+    onBackground = Color(0xFFE9EDF5),
+    onSurface = Color(0xFFE9EDF5),
+    onSurfaceVariant = Color(0xFFC2C8D4),
+    onPrimaryContainer = Color(0xFFDCE6FF),
+    onSecondaryContainer = Color(0xFFD9F6E7),
+    onErrorContainer = Color(0xFFFFD8D8)
+)
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(14.dp),
+    extraLarge = RoundedCornerShape(18.dp)
 )
 
 @Composable
@@ -31,6 +59,7 @@ fun TimeQuestTheme(
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content
     )
 }

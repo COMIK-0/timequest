@@ -19,5 +19,9 @@ class TaskRepository(
 
     suspend fun updateTask(task: TaskEntity) = taskDao.updateTask(task)
 
+    suspend fun updateTasks(tasks: List<TaskEntity>) {
+        tasks.forEach { taskDao.updateTask(it) }
+    }
+
     suspend fun deleteTask(task: TaskEntity) = taskDao.deleteTask(task)
 }

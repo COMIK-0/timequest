@@ -33,7 +33,7 @@
     <string name="priority_label">Приоритет</string>
     <string name="difficulty_label">Сложность</string>
     <string name="estimated_time_label">Время выполнения, мин.</string>
-    <string name="due_date_label">Срок</string>
+    <string name="due_date_label">Дата</string>
     <string name="due_date_hint">Выберите дату</string>
     <string name="required_field">Обязательное поле</string>
 
@@ -57,14 +57,14 @@
     <string name="difficulty_medium">Средняя</string>
     <string name="difficulty_hard">Сложная</string>
 
-    <string name="select_due_date">Выбрать срок</string>
-    <string name="clear_due_date">Убрать срок</string>
+    <string name="select_due_date">Выбрать дату</string>
+    <string name="clear_due_date">Убрать дату</string>
     <string name="no_due_date">Дата не выбрана</string>
     <string name="date_picker_ok">Готово</string>
 
     <string name="category_value">Категория: %1$s</string>
     <string name="estimated_time_value">Время выполнения: %1$d мин.</string>
-    <string name="due_date_value">Срок: %1$s</string>
+    <string name="due_date_value">Дата: %1$s</string>
 
     <string name="today_title">Сегодня</string>
     <string name="dashboard_empty_state">Пока нет задач. Добавьте первую задачу, чтобы начать планирование.</string>
@@ -72,8 +72,8 @@
     <string name="completed_today_count">Выполнено сегодня</string>
     <string name="daily_progress">Прогресс на день</string>
     <string name="daily_progress_value">%1$d из %2$d задач на сегодня</string>
-    <string name="nearest_deadline">Ближайший срок</string>
-    <string name="no_nearest_deadline">Пока нет задач со сроком.</string>
+    <string name="nearest_deadline">Ближайшая дата</string>
+    <string name="no_nearest_deadline">Пока нет задач с датой.</string>
     <string name="nearest_active_tasks">Ближайшие активные задачи</string>
     <string name="task_with_date">%1$s — %2$s</string>
     <string name="level_xp_title">Уровень и XP</string>
@@ -99,20 +99,23 @@
     <string name="achievement_locked">Впереди</string>
 
     <string name="section_task_params">Параметры задачи</string>
-    <string name="section_deadline_time">Срок и время</string>
+    <string name="section_deadline_time">Дата и время</string>
     <string name="minutes_value">%1$d мин</string>
-    <string name="date_picker_title">Выбор срока</string>
+    <string name="date_picker_title">Выбор даты</string>
 
     <string name="sort_smart">По умному порядку</string>
-    <string name="sort_deadline">По сроку</string>
+    <string name="sort_deadline">По дате</string>
     <string name="sort_priority">По приоритету</string>
     <string name="sort_time">По времени</string>
 
     <string name="recommended_plan_today">Рекомендуемый план на сегодня</string>
     <string name="start_with_task">Начните с этого: %1$s</string>
-    <string name="no_recommended_tasks">На сегодня нет задач со сроком.</string>
+    <string name="no_recommended_tasks">На сегодня нет задач с датой.</string>
 
-    <string name="notification_deadline_title">Срок сегодня</string>
+    <string name="notification_deadline_title">Дата задачи сегодня</string>
     <string name="notification_daily_title">План на сегодня</string>
     <string name="notification_daily_text">Сегодня задач: %1$d. Начните с: %2$s</string>
+    <string name="notification_scheduled_title">Скоро задача</string>
+    <string name="notification_scheduled_text">Через 5 минут: %1$s</string>
+    <string name="calendar_title">Календарь</string>
 </resources>

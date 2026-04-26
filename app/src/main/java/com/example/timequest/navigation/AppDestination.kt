@@ -6,8 +6,22 @@ sealed class AppDestination(
 ) {
     data object Dashboard : AppDestination("dashboard", "Главная")
     data object Tasks : AppDestination("tasks", "Задачи")
-    data object Statistics : AppDestination("statistics", "Статистика")
+    data object Calendar : AppDestination("calendar", "Календарь")
     data object Profile : AppDestination("profile", "Профиль")
+
+    object DayPlanner {
+        const val route = "day_planner"
+        const val dateMillisArg = "dateMillis"
+        const val routeWithArg = "$route?$dateMillisArg={$dateMillisArg}"
+
+        fun createRoute(dateMillis: Long? = null): String {
+            return if (dateMillis != null) {
+                "$route?$dateMillisArg=$dateMillis"
+            } else {
+                route
+            }
+        }
+    }
 
     object TaskEditor {
         const val route = "task_editor"
@@ -21,5 +35,9 @@ sealed class AppDestination(
                 route
             }
         }
+    }
+
+    object FocusQuest {
+        const val route = "focus_quest"
     }
 }

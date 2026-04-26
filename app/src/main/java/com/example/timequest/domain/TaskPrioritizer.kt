@@ -8,19 +8,25 @@ import java.time.ZoneId
 object TaskPrioritizer {
     fun sortSmart(tasks: List<TaskEntity>): List<TaskEntity> {
         return tasks.sortedWith(
+            // 1. Сначала показываем задачи на сегодня, потому что они самые важные для плана дня.
             compareBy<TaskEntity> { task -> if (task.dueDate?.isToday() == true) 0 else 1 }
+                // 2. Затем идут задачи с ближайшей датой. Задачи без даты уходят ниже.
                 .thenBy { task -> task.dueDate ?: Long.MAX_VALUE }
+                // 3. При равной дате выше ставим более высокий приоритет.
                 .thenByDescending { task -> priorityWeight(task.priority) }
+                // 4. Затем учитываем сложность: сложные задачи лучше увидеть раньше.
                 .thenByDescending { task -> difficultyWeight(task.difficulty) }
+                // 5. Короткие задачи легче быстро закрыть, поэтому они идут выше.
                 .thenBy { task -> if (task.estimatedMinutes > 0) task.estimatedMinutes else Int.MAX_VALUE }
-                .thenByDescending { task -> task.createdAt }
+                // 6. Если всё одинаково, более старые задачи не теряются внизу списка.
+                .thenBy { task -> task.createdAt }
         )
     }
 
     fun sortByDeadline(tasks: List<TaskEntity>): List<TaskEntity> {
         return tasks.sortedWith(
             compareBy<TaskEntity> { task -> task.dueDate ?: Long.MAX_VALUE }
-                .thenByDescending { task -> task.createdAt }
+                .thenBy { task -> task.createdAt }
         )
     }
 
@@ -28,7 +34,7 @@ object TaskPrioritizer {
         return tasks.sortedWith(
             compareByDescending<TaskEntity> { task -> priorityWeight(task.priority) }
                 .thenBy { task -> task.dueDate ?: Long.MAX_VALUE }
-                .thenByDescending { task -> task.createdAt }
+                .thenBy { task -> task.createdAt }
         )
     }
 
@@ -36,7 +42,7 @@ object TaskPrioritizer {
         return tasks.sortedWith(
             compareBy<TaskEntity> { task -> if (task.estimatedMinutes > 0) task.estimatedMinutes else Int.MAX_VALUE }
                 .thenBy { task -> task.dueDate ?: Long.MAX_VALUE }
-                .thenByDescending { task -> task.createdAt }
+                .thenBy { task -> task.createdAt }
         )
     }
 

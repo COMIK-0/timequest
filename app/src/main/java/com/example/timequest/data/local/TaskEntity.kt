@@ -14,7 +14,10 @@ data class TaskEntity(
     val difficulty: String,
     val dueDate: Long? = null,
     val estimatedMinutes: Int,
+    val scheduledStartTime: Long? = null,
+    val scheduledEndTime: Long? = null,
     val isCompleted: Boolean = false,
+    val xpAwarded: Boolean = false,
     val createdAt: Long,
     val completedAt: Long? = null
 )

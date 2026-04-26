@@ -20,13 +20,20 @@ import com.example.timequest.presentation.tasks.TaskViewModel
 import com.example.timequest.ui.theme.TimeQuestTheme
 
 class MainActivity : ComponentActivity() {
+    private val notificationPrefs by lazy {
+        getSharedPreferences("notification_permission", MODE_PRIVATE)
+    }
+
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { }
+    ) {
+        notificationPrefs.edit().putBoolean(KEY_PERMISSION_REQUESTED, true).apply()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         TaskReminderScheduler.createNotificationChannel(this)
+        TaskReminderScheduler.ensureExactAlarmPermission(this)
         TaskReminderScheduler.scheduleDailyPlan(this)
         requestNotificationPermissionIfNeeded()
 
@@ -48,11 +55,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestNotificationPermissionIfNeeded() {
+        val alreadyRequested = notificationPrefs.getBoolean(KEY_PERMISSION_REQUESTED, false)
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !alreadyRequested
         ) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    companion object {
+        private const val KEY_PERMISSION_REQUESTED = "post_notifications_requested"
     }
 }

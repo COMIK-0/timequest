@@ -11,9 +11,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.timequest.presentation.calendar.CalendarScreen
 import com.example.timequest.presentation.dashboard.DashboardScreen
+import com.example.timequest.presentation.dayplanner.DayPlannerScreen
+import com.example.timequest.presentation.focus.FocusQuestScreen
 import com.example.timequest.presentation.profile.ProfileScreen
-import com.example.timequest.presentation.statistics.StatisticsScreen
 import com.example.timequest.presentation.taskedit.AddTaskWizardScreen
 import com.example.timequest.presentation.tasks.TaskViewModel
 import com.example.timequest.presentation.tasks.TasksScreen
@@ -47,6 +49,36 @@ fun TimeQuestNavHost(
                     navController.navigate(AppDestination.TaskEditor.createRoute()) {
                         launchSingleTop = true
                     }
+                },
+                onOpenDayPlanner = { dateMillis ->
+                    navController.navigate(AppDestination.DayPlanner.createRoute(dateMillis)) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        composable(
+            route = AppDestination.DayPlanner.routeWithArg,
+            arguments = listOf(
+                navArgument(AppDestination.DayPlanner.dateMillisArg) {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                }
+            )
+        ) { backStackEntry ->
+            val initialDateMillis = backStackEntry.arguments
+                ?.getLong(AppDestination.DayPlanner.dateMillisArg)
+                ?.takeIf { it != -1L }
+
+            DayPlannerScreen(
+                taskViewModel = taskViewModel,
+                initialDateMillis = initialDateMillis,
+                onNavigateBack = { navController.popBackStack() },
+                onPlanSaved = {
+                    navController.popBackStack(
+                        route = AppDestination.Dashboard.route,
+                        inclusive = false
+                    )
                 }
             )
         }
@@ -58,7 +90,18 @@ fun TimeQuestNavHost(
                 },
                 onEditTask = { taskId ->
                     navController.navigate(AppDestination.TaskEditor.createRoute(taskId))
+                },
+                onStartFocus = {
+                    navController.navigate(AppDestination.FocusQuest.route) {
+                        launchSingleTop = true
+                    }
                 }
+            )
+        }
+        composable(AppDestination.FocusQuest.route) {
+            FocusQuestScreen(
+                taskViewModel = taskViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(
@@ -96,8 +139,8 @@ fun TimeQuestNavHost(
                 }
             )
         }
-        composable(AppDestination.Statistics.route) {
-            StatisticsScreen(taskViewModel = taskViewModel)
+        composable(AppDestination.Calendar.route) {
+            CalendarScreen(taskViewModel = taskViewModel)
         }
         composable(AppDestination.Profile.route) {
             ProfileScreen(taskViewModel = taskViewModel)

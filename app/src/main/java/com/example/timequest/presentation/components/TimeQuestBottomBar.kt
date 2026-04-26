@@ -1,7 +1,7 @@
 package com.example.timequest.presentation.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -38,9 +38,9 @@ fun TimeQuestBottomBar(navController: NavHostController) {
             labelRes = R.string.tasks_title
         ),
         BottomBarItem(
-            destination = AppDestination.Statistics,
-            icon = Icons.Outlined.BarChart,
-            labelRes = R.string.statistics_title
+            destination = AppDestination.Calendar,
+            icon = Icons.Outlined.CalendarMonth,
+            labelRes = R.string.calendar_title
         ),
         BottomBarItem(
             destination = AppDestination.Profile,
@@ -50,8 +50,8 @@ fun TimeQuestBottomBar(navController: NavHostController) {
     )
 
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 0.dp
     ) {
         items.forEach { item ->
             val selected = currentDestination
@@ -83,7 +83,9 @@ fun TimeQuestBottomBar(navController: NavHostController) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }

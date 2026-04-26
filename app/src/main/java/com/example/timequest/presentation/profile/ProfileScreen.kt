@@ -2,186 +2,223 @@ package com.example.timequest.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
+import com.example.timequest.domain.Achievement
+import com.example.timequest.domain.GamificationManager
+import com.example.timequest.presentation.components.AppCard
+import com.example.timequest.presentation.components.MetricCard
+import com.example.timequest.presentation.components.SoftProgress
 import com.example.timequest.presentation.tasks.TaskViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Composable
 fun ProfileScreen(taskViewModel: TaskViewModel) {
     val tasks by taskViewModel.allTasks.collectAsState()
+    var showStatsDetails by remember { mutableStateOf(false) }
+    var showAchievementDetails by remember { mutableStateOf(false) }
+
     val completedTasks = tasks.filter { it.isCompleted }
-    val totalXp = completedTasks.sumOf(::calculateXp)
-    val level = totalXp / 100 + 1
-    val levelProgress = (totalXp % 100) / 100f
+    val activeTasks = tasks.filter { !it.isCompleted }
+    val totalXp = GamificationManager.totalXp(tasks)
+    val levelInfo = GamificationManager.levelInfo(totalXp)
+    val streak = GamificationManager.currentStreak(tasks)
+    val achievements = GamificationManager.achievements(tasks)
+    val unlockedAchievements = achievements.filter { it.isUnlocked }
+    val completionRate = if (tasks.isEmpty()) 0 else completedTasks.size * 100 / tasks.size
+    val completedToday = tasks.count { it.completedAt?.toLocalDate() == LocalDate.now() }
+    val bestDay = GamificationManager.bestCompletionDay(tasks)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = stringResource(R.string.profile_title),
+            text = "Профиль",
             style = MaterialTheme.typography.headlineMedium
         )
 
-        SectionCard {
+        AppCard(highlighted = true) {
             Text(
-                text = stringResource(R.string.level_xp_title),
+                text = "Уровень ${levelInfo.level}",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "$totalXp XP накоплено",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                text = stringResource(R.string.level_value, level),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = stringResource(R.string.xp_value, totalXp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            LinearProgressIndicator(
-                progress = { levelProgress },
+            SoftProgress(
+                progress = levelInfo.progress,
                 modifier = Modifier.fillMaxWidth()
             )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            MetricCard(
-                title = stringResource(R.string.completed_tasks),
-                value = completedTasks.size.toString(),
-                modifier = Modifier.weight(1f)
-            )
-            MetricCard(
-                title = stringResource(R.string.current_streak),
-                value = stringResource(R.string.streak_placeholder),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        SectionCard {
             Text(
-                text = stringResource(R.string.achievements_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            AchievementLine(
-                title = stringResource(R.string.achievement_first_done),
-                isUnlocked = completedTasks.isNotEmpty()
-            )
-            AchievementLine(
-                title = stringResource(R.string.achievement_three_done),
-                isUnlocked = completedTasks.size >= 3
-            )
-            AchievementLine(
-                title = stringResource(R.string.achievement_seven_days),
-                isUnlocked = false
-            )
-        }
-    }
-}
-
-@Composable
-private fun MetricCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = title,
+                text = "До следующего уровня: ${(levelInfo.nextLevelXp - totalXp).coerceAtLeast(0)} XP",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        AppCard {
+            SectionHeader(
+                title = "Статистика",
+                actionText = if (showStatsDetails) "Скрыть" else "Подробнее",
+                onActionClick = { showStatsDetails = !showStatsDetails }
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard(title = "Выполнено", value = completedTasks.size.toString(), modifier = Modifier.weight(1f))
+                MetricCard(title = "Серия", value = "$streak дн.", modifier = Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard(title = "Сегодня", value = completedToday.toString(), modifier = Modifier.weight(1f))
+                MetricCard(title = "Успех", value = "$completionRate%", modifier = Modifier.weight(1f))
+            }
+            if (showStatsDetails) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                DetailLine("Активные задачи", activeTasks.size.toString())
+                DetailLine("Все задачи", tasks.size.toString())
+                DetailLine("Запланировано", tasks.count { it.scheduledStartTime != null }.toString())
+                DetailLine(
+                    "Лучший день",
+                    bestDay?.let { "${it.first.dayOfMonth}.${it.first.monthValue}: ${it.second}" } ?: "Пока нет"
+                )
+            }
+        }
+
+        AppCard {
+            SectionHeader(
+                title = "Награды",
+                actionText = if (showAchievementDetails) "Скрыть" else "Подробнее",
+                onActionClick = { showAchievementDetails = !showAchievementDetails }
+            )
+            Text(
+                text = "${unlockedAchievements.size} из ${achievements.size} открыто",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val preview = if (showAchievementDetails) achievements else achievements.take(3)
+            preview.forEach { achievement ->
+                AchievementRow(achievement = achievement)
+            }
+        }
     }
 }
 
 @Composable
-private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            content = content
-        )
-    }
-}
-
-@Composable
-private fun AchievementLine(
+private fun SectionHeader(
     title: String,
-    isUnlocked: Boolean
+    actionText: String,
+    onActionClick: () -> Unit
 ) {
-    val status = if (isUnlocked) {
-        stringResource(R.string.achievement_unlocked)
-    } else {
-        stringResource(R.string.achievement_locked)
-    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = title, style = MaterialTheme.typography.bodyMedium)
         Text(
-            text = status,
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        TextButton(onClick = onActionClick) {
+            Text(text = actionText)
+        }
+    }
+}
+
+@Composable
+private fun AchievementRow(achievement: Achievement) {
+    Surface(
+        color = if (achievement.isUnlocked) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f)
+        },
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                text = achievement.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = achievement.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            SoftProgress(
+                progress = if (achievement.targetValue == 0) {
+                    0f
+                } else {
+                    achievement.currentValue.toFloat() / achievement.targetValue
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = if (achievement.isUnlocked) {
+                    "Получено"
+                } else {
+                    "${achievement.currentValue}/${achievement.targetValue}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (achievement.isUnlocked) {
+                    MaterialTheme.colorScheme.secondary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isUnlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
-private fun calculateXp(task: TaskEntity): Int {
-    val baseXp = when (task.difficulty) {
-        "hard" -> 40
-        "medium" -> 20
-        else -> 10
-    }
-    val priorityBonus = if (task.priority == "high") 10 else 0
-    val dueDateBonus = if (
-        task.dueDate != null &&
-        task.completedAt != null &&
-        task.completedAt <= task.dueDate
-    ) {
-        5
-    } else {
-        0
-    }
-    return baseXp + priorityBonus + dueDateBonus
+private fun Long.toLocalDate(): LocalDate {
+    return Instant.ofEpochMilli(this)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
 }

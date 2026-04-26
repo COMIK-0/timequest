@@ -11,48 +11,66 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.timequest.R
+import com.example.timequest.data.local.TaskEntity
+import com.example.timequest.domain.GamificationManager
+import com.example.timequest.presentation.components.SoftProgress
 import com.example.timequest.presentation.tasks.TaskViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun StatisticsScreen(taskViewModel: TaskViewModel) {
     val tasks by taskViewModel.allTasks.collectAsState()
     val totalTasks = tasks.size
     val completedTasks = tasks.count { it.isCompleted }
-    val activeTasks = totalTasks - completedTasks
+    val activeTasks = tasks.filter { !it.isCompleted }
+    val completedToday = tasks.count { task -> task.completedAt?.toLocalDate() == LocalDate.now() }
+    val totalXp = GamificationManager.totalXp(tasks)
+    val bestDay = GamificationManager.bestCompletionDay(tasks)
     val completionProgress = if (totalTasks == 0) 0f else completedTasks.toFloat() / totalTasks
     val completionPercent = (completionProgress * 100).toInt()
+    val lastSevenDays = (6 downTo 0).map { daysAgo -> LocalDate.now().minusDays(daysAgo.toLong()) }
+    val activityByDay = lastSevenDays.map { date ->
+        date to tasks.count { task -> task.completedAt?.toLocalDate() == date }
+    }
+    val completedLastSevenDays = activityByDay.sumOf { it.second }
+    val maxDayCount = activityByDay.maxOfOrNull { it.second } ?: 0
     val otherCategory = stringResource(R.string.category_other)
     val lowPriority = stringResource(R.string.priority_low)
     val mediumPriority = stringResource(R.string.priority_medium)
     val highPriority = stringResource(R.string.priority_high)
     val categoryCounts = tasks
-        .groupingBy { it.category.ifBlank { otherCategory } }
+        .groupingBy { task -> task.category.ifBlank { otherCategory } }
         .eachCount()
         .toList()
         .sortedByDescending { it.second }
-    val priorityCounts = tasks
-        .groupingBy { priorityLabel(it.priority, lowPriority, mediumPriority, highPriority) }
-        .eachCount()
-        .toList()
-    val completedLastSevenDays = tasks.count { task ->
-        task.completedAt?.toLocalDate()?.let { completedDate ->
-            val today = LocalDate.now()
-            completedDate >= today.minusDays(6) && completedDate <= today
-        } == true
-    }
+    val priorityCounts = listOf(
+        highPriority to tasks.count { it.priority == "high" },
+        mediumPriority to tasks.count { it.priority == "medium" },
+        lowPriority to tasks.count { it.priority != "high" && it.priority != "medium" }
+    )
+    val averageActiveTime = activeTasks
+        .map { it.estimatedMinutes }
+        .filter { it > 0 }
+        .average()
+        .takeIf { !it.isNaN() }
+        ?.toInt() ?: 0
+    val todayPlannedTime = tasks
+        .filter { task -> task.dueDate?.toLocalDate() == LocalDate.now() }
+        .sumOf { it.estimatedMinutes.coerceAtLeast(0) }
 
     Column(
         modifier = Modifier
@@ -66,6 +84,17 @@ fun StatisticsScreen(taskViewModel: TaskViewModel) {
             style = MaterialTheme.typography.headlineMedium
         )
 
+        if (tasks.isEmpty()) {
+            SectionCard {
+                Text(
+                    text = "Статистика появится после добавления и выполнения задач.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            return@Column
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -77,7 +106,7 @@ fun StatisticsScreen(taskViewModel: TaskViewModel) {
             )
             MetricCard(
                 title = stringResource(R.string.active_tasks_count),
-                value = activeTasks.toString(),
+                value = activeTasks.size.toString(),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -92,8 +121,40 @@ fun StatisticsScreen(taskViewModel: TaskViewModel) {
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
+                title = stringResource(R.string.completion_percentage),
+                value = "$completionPercent%",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MetricCard(
+                title = stringResource(R.string.completed_today_count),
+                value = completedToday.toString(),
+                modifier = Modifier.weight(1f)
+            )
+            MetricCard(
                 title = stringResource(R.string.completed_last_7_days),
                 value = completedLastSevenDays.toString(),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            MetricCard(
+                title = "Всего XP",
+                value = totalXp.toString(),
+                modifier = Modifier.weight(1f)
+            )
+            MetricCard(
+                title = "Лучший день",
+                value = bestDay?.let { "${it.first.format(dayFormatter())}: ${it.second}" } ?: "0",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -103,49 +164,62 @@ fun StatisticsScreen(taskViewModel: TaskViewModel) {
                 text = stringResource(R.string.completion_percentage),
                 style = MaterialTheme.typography.titleMedium
             )
+            SoftProgress(progress = completionProgress, modifier = Modifier.fillMaxWidth())
             Text(
-                text = "$completionPercent%",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            LinearProgressIndicator(
-                progress = { completionProgress },
-                modifier = Modifier.fillMaxWidth()
+                text = "$completedTasks из $totalTasks задач выполнено",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         SectionCard {
             Text(
-                text = stringResource(R.string.tasks_by_category),
+                text = "Активность за 7 дней",
                 style = MaterialTheme.typography.titleMedium
             )
-            if (categoryCounts.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.no_statistics_yet),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            activityByDay.forEach { (date, count) ->
+                val progress = if (maxDayCount == 0) 0f else count.toFloat() / maxDayCount
+                ProgressLine(
+                    label = date.format(dayFormatter()),
+                    value = count.toString(),
+                    progress = progress
                 )
-            } else {
-                categoryCounts.forEach { (category, count) ->
-                    StatLine(label = category, value = count.toString())
-                }
             }
         }
 
         SectionCard {
             Text(
-                text = stringResource(R.string.tasks_by_priority),
+                text = "Категории",
                 style = MaterialTheme.typography.titleMedium
             )
-            if (priorityCounts.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.no_statistics_yet),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                priorityCounts.forEach { (priority, count) ->
-                    StatLine(label = priority, value = count.toString())
-                }
+            categoryCounts.forEach { (category, count) ->
+                StatLine(label = category, value = "$count")
             }
+        }
+
+        SectionCard {
+            Text(
+                text = "Приоритеты",
+                style = MaterialTheme.typography.titleMedium
+            )
+            priorityCounts.forEach { (priority, count) ->
+                StatLine(label = priority, value = "$count")
+            }
+        }
+
+        SectionCard {
+            Text(
+                text = "Среднее время",
+                style = MaterialTheme.typography.titleMedium
+            )
+            StatLine(
+                label = "Среднее время активных задач",
+                value = "$averageActiveTime мин"
+            )
+            StatLine(
+                label = "Запланировано на сегодня",
+                value = "$todayPlannedTime мин"
+            )
         }
     }
 }
@@ -158,20 +232,25 @@ private fun MetricCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -182,10 +261,12 @@ private fun MetricCard(
 private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             content = content
         )
@@ -205,21 +286,21 @@ private fun StatLine(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
-private fun priorityLabel(
-    priority: String,
-    lowLabel: String,
-    mediumLabel: String,
-    highLabel: String
-): String {
-    return when (priority) {
-        "high" -> highLabel
-        "medium" -> mediumLabel
-        else -> lowLabel
+@Composable
+private fun ProgressLine(
+    label: String,
+    value: String,
+    progress: Float
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StatLine(label = label, value = value)
+        SoftProgress(progress = progress, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -227,4 +308,8 @@ private fun Long.toLocalDate(): LocalDate {
     return Instant.ofEpochMilli(this)
         .atZone(ZoneId.systemDefault())
         .toLocalDate()
+}
+
+private fun dayFormatter(): DateTimeFormatter {
+    return DateTimeFormatter.ofPattern("dd.MM", Locale.getDefault())
 }

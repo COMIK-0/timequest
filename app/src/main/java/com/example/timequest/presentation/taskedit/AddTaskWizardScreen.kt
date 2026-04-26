@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,9 +35,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,13 +63,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
+import com.example.timequest.domain.GamificationManager
 import com.example.timequest.notifications.TaskReminderScheduler
 import com.example.timequest.presentation.tasks.TaskViewModel
 import java.text.SimpleDateFormat
@@ -99,7 +106,7 @@ fun AddTaskWizardScreen(
     var priority by rememberSaveable { mutableStateOf("medium") }
     var difficulty by rememberSaveable { mutableStateOf("medium") }
     var estimatedMinutes by rememberSaveable { mutableStateOf(30) }
-    var dueDate by rememberSaveable { mutableStateOf<Long?>(null) }
+    var dueDate by rememberSaveable { mutableStateOf<Long?>(todayStartMillis()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var titleError by rememberSaveable { mutableStateOf(false) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
@@ -221,7 +228,10 @@ fun AddTaskWizardScreen(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .navigationBarsPadding(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
@@ -257,19 +267,33 @@ fun AddTaskWizardScreen(
                                 difficulty = difficulty,
                                 dueDate = dueDate,
                                 estimatedMinutes = estimatedMinutes,
+                                scheduledStartTime = existingTask?.scheduledStartTime,
+                                scheduledEndTime = existingTask?.scheduledEndTime,
                                 isCompleted = existingTask?.isCompleted ?: false,
+                                xpAwarded = existingTask?.xpAwarded ?: false,
                                 createdAt = existingTask?.createdAt ?: System.currentTimeMillis(),
                                 completedAt = existingTask?.completedAt
                             )
 
                             if (isEditMode) {
                                 taskViewModel.updateTask(task) {
-                                    TaskReminderScheduler.scheduleTaskDeadline(context, task.id, task.dueDate)
+                                    TaskReminderScheduler.cancelTaskReminder(context, task.id)
+                                    TaskReminderScheduler.scheduleTaskDeadline(
+                                        context = context,
+                                        taskId = task.id,
+                                        dueDate = task.dueDate,
+                                        scheduledStartTime = task.scheduledStartTime
+                                    )
                                     onTaskSaved()
                                 }
                             } else {
                                 taskViewModel.addTask(task) { savedTaskId ->
-                                    TaskReminderScheduler.scheduleTaskDeadline(context, savedTaskId, task.dueDate)
+                                    TaskReminderScheduler.scheduleTaskDeadline(
+                                        context = context,
+                                        taskId = savedTaskId,
+                                        dueDate = task.dueDate,
+                                        scheduledStartTime = task.scheduledStartTime
+                                    )
                                     onTaskSaved()
                                 }
                             }
@@ -549,6 +573,9 @@ private fun DeadlineStep(
             modifier = Modifier
                 .matchParentSize()
                 .clickable { onOpenDatePicker() }
+                .clearAndSetSemantics {
+                    contentDescription = "Дата: ${dueDate?.let(::formatDate) ?: "не выбрана"}"
+                }
         )
     }
     if (dueDate != null) {
@@ -567,10 +594,46 @@ private fun ReviewStep(
     estimatedMinutes: Int,
     dueDate: Long?
 ) {
+    val previewTask = TaskEntity(
+        title = title.trim(),
+        description = "",
+        category = category,
+        priority = priority,
+        difficulty = difficulty,
+        estimatedMinutes = estimatedMinutes,
+        dueDate = dueDate,
+        createdAt = System.currentTimeMillis()
+    )
+    val expectedXp = GamificationManager.calculateTaskXp(previewTask)
+
     StepHeader(
         title = "Проверьте задачу",
         subtitle = "Если всё верно, сохраните задачу."
     )
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "$expectedXp XP",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Примерная награда за выполнение",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
     SummaryRow(label = stringResource(R.string.task_title_label), value = title)
     SummaryRow(label = stringResource(R.string.task_category_label), value = category)
     SummaryRow(label = stringResource(R.string.priority_label), value = priorityOptionLabel(priority))
@@ -621,7 +684,6 @@ private fun SummaryRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownField(
     label: String,
@@ -630,12 +692,15 @@ private fun DropdownField(
     onValueSelected: (String) -> Unit
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val menuModifier = if (fieldSize.width > 0) {
+        Modifier.width(with(density) { fieldSize.width.toDp() })
+    } else {
+        Modifier.fillMaxWidth()
+    }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = selectedValue,
             onValueChange = {},
@@ -648,13 +713,29 @@ private fun DropdownField(
                 )
             },
             modifier = Modifier
-                .menuAnchor()
+                .onGloballyPositioned { coordinates ->
+                    fieldSize = coordinates.size
+                }
                 .fillMaxWidth(),
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
         )
-        ExposedDropdownMenu(
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { expanded = true }
+                .clearAndSetSemantics {
+                    contentDescription = "$label: $selectedValue"
+                }
+        )
+
+        DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = menuModifier,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp,
+            shape = MaterialTheme.shapes.medium
         ) {
             options.forEach { option ->
                 DropdownMenuItem(

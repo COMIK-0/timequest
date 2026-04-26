@@ -15,8 +15,9 @@ fun TimeQuestApp(taskViewModel: TaskViewModel) {
     val bottomRoutes = setOf(
         AppDestination.Dashboard.route,
         AppDestination.Tasks.route,
-        AppDestination.Statistics.route,
-        AppDestination.Profile.route
+        AppDestination.Calendar.route,
+        AppDestination.Profile.route,
+        AppDestination.DayPlanner.route
     )
 
     Scaffold(
