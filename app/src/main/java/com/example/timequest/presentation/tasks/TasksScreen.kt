@@ -21,11 +21,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -123,7 +123,7 @@ fun TasksScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
+            SmallFloatingActionButton(
                 onClick = onAddTask,
                 shape = MaterialTheme.shapes.large,
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -144,8 +144,8 @@ fun TasksScreen(
         ) {
             Text(
                 text = stringResource(R.string.tasks_title),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
             TabRow(
@@ -165,7 +165,7 @@ fun TasksScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -182,7 +182,7 @@ fun TasksScreen(
                         onClick = { sortMenuExpanded = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 44.dp),
+                            .heightIn(min = 40.dp),
                         shape = MaterialTheme.shapes.medium,
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding
                     ) {
@@ -247,8 +247,8 @@ fun TasksScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        contentPadding = PaddingValues(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(
                             items = uiState.tasks,

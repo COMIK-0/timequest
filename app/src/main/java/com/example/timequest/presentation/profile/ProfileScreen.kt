@@ -54,18 +54,18 @@ fun ProfileScreen(taskViewModel: TaskViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = "Профиль",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineSmall
         )
 
         AppCard(highlighted = true) {
             Text(
                 text = "Уровень ${levelInfo.level}",
-                style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
@@ -90,11 +90,11 @@ fun ProfileScreen(taskViewModel: TaskViewModel) {
                 actionText = if (showStatsDetails) "Скрыть" else "Подробнее",
                 onActionClick = { showStatsDetails = !showStatsDetails }
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricCard(title = "Выполнено", value = completedTasks.size.toString(), modifier = Modifier.weight(1f))
                 MetricCard(title = "Серия", value = "$streak дн.", modifier = Modifier.weight(1f))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricCard(title = "Сегодня", value = completedToday.toString(), modifier = Modifier.weight(1f))
                 MetricCard(title = "Успех", value = "$completionRate%", modifier = Modifier.weight(1f))
             }
@@ -163,7 +163,7 @@ private fun AchievementRow(achievement: Achievement) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(

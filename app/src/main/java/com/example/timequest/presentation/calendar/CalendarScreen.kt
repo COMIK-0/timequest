@@ -68,8 +68,8 @@ fun CalendarScreen(taskViewModel: TaskViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         MonthHeader(
             month = visibleMonth,
@@ -129,7 +129,7 @@ private fun MonthHeader(
         }
         Text(
             text = month.format(DateTimeFormatter.ofPattern("LLLL yyyy", Locale("ru"))).uppercase(),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
         IconButton(onClick = onNext) {
@@ -151,11 +151,12 @@ private fun CalendarMonth(
     val weekDays = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
 
     Card(
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 weekDays.forEach { day ->
@@ -210,7 +211,7 @@ private fun CalendarDay(
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .padding(3.dp)
+            .padding(2.dp)
             .clip(CircleShape)
             .background(background)
             .clickable(onClick = onClick),
@@ -219,7 +220,7 @@ private fun CalendarDay(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = date.dayOfMonth.toString(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = textColor,
                 fontWeight = if (isSelected || hasPlan) FontWeight.SemiBold else FontWeight.Normal
             )
@@ -249,11 +250,12 @@ private fun SectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)

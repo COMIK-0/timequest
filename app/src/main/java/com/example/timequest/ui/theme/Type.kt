@@ -7,23 +7,23 @@ import androidx.compose.ui.unit.sp
 
 val AppTypography = Typography(
     headlineMedium = TextStyle(
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
         fontWeight = FontWeight.SemiBold
     ),
     headlineSmall = TextStyle(
-        fontSize = 24.sp,
-        lineHeight = 30.sp,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
         fontWeight = FontWeight.SemiBold
     ),
     titleLarge = TextStyle(
-        fontSize = 21.sp,
-        lineHeight = 27.sp,
+        fontSize = 19.sp,
+        lineHeight = 25.sp,
         fontWeight = FontWeight.SemiBold
     ),
     titleMedium = TextStyle(
-        fontSize = 17.sp,
-        lineHeight = 23.sp,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
         fontWeight = FontWeight.SemiBold
     ),
     bodyLarge = TextStyle(

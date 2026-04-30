@@ -154,13 +154,13 @@ fun DayPlannerScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AppCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -230,7 +230,7 @@ fun DayPlannerScreen(
                 SectionTitle(title = "Распределение")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MetricCard(
                         title = "Задач на дату",
@@ -592,7 +592,7 @@ private fun TimelineTaskRow(
         verticalAlignment = Alignment.Top
     ) {
         Column(
-            modifier = Modifier.width(64.dp),
+        modifier = Modifier.width(58.dp),
             horizontalAlignment = Alignment.End
         ) {
             Text(
@@ -609,7 +609,7 @@ private fun TimelineTaskRow(
         Box(
             modifier = Modifier
                 .width(3.dp)
-                .height(76.dp)
+                .height(68.dp)
                 .background(priorityColor(task.priority), MaterialTheme.shapes.small)
         )
         Surface(
@@ -618,8 +618,8 @@ private fun TimelineTaskRow(
             shape = MaterialTheme.shapes.medium
         ) {
             Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Text(
                     text = task.title,

@@ -77,7 +77,7 @@ fun TaskCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 132.dp)
+                .heightIn(min = 112.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -86,8 +86,8 @@ fun TaskCard(
                     .background(priorityColor(task.priority))
             )
             Column(
-                modifier = Modifier.padding(start = 12.dp, top = 12.dp, end = 10.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.padding(start = 10.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -102,7 +102,7 @@ fun TaskCard(
                             checked = task.isCompleted,
                             onCheckedChange = { onToggleComplete() },
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(44.dp)
                                 .semantics { contentDescription = completeActionDescription }
                         )
                         Column(
@@ -131,7 +131,7 @@ fun TaskCard(
                     Row {
                         IconButton(
                             onClick = onEditClick,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Edit,
@@ -141,7 +141,7 @@ fun TaskCard(
                         }
                         IconButton(
                             onClick = onDeleteClick,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
@@ -217,7 +217,7 @@ fun TaskCard(
                     if (!task.isCompleted) {
                         TextButton(
                             onClick = { onFocusClick(task) },
-                            modifier = Modifier.height(40.dp)
+                            modifier = Modifier.height(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.PlayArrow,
@@ -231,7 +231,7 @@ fun TaskCard(
 
                 if (!task.isCompleted && task.dueDate?.isOverdue() == true) {
                     Text(
-                        text = "Анти-прокрастинация: начните с 15 минут или поставьте задачу первой в плане.",
+                        text = "Просрочено. Начните с 15 минут или перенесите в план.",
                         style = MaterialTheme.typography.bodySmall,
                         color = priorityColor("high")
                     )

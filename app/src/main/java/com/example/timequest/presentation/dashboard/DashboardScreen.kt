@@ -47,59 +47,48 @@ fun DashboardScreen(
     onOpenDayPlanner: (Long) -> Unit
 ) {
     val tasks by taskViewModel.allTasks.collectAsState()
-    val activeTasks = tasks.filter { !it.isCompleted }
     val todayTasks = tasks.filter { task -> task.dueDate?.isToday() == true }
     val activeTodayTasks = todayTasks.filter { task -> !task.isCompleted }
     val sortedTodayTasks = TaskPrioritizer.sortSmart(activeTodayTasks)
-    val allScheduledTodayTasks = todayTasks
+    val scheduledTodayTasks = todayTasks
         .filter { task -> task.scheduledStartTime != null && task.scheduledEndTime != null }
         .sortedBy { task -> task.scheduledStartTime }
-    val activeScheduledTodayTasks = allScheduledTodayTasks.filter { task -> !task.isCompleted }
-    val remainingPlannedMinutes = activeScheduledTodayTasks.sumOf { task ->
-        task.estimatedMinutes.coerceAtLeast(0)
-    }
+    val activeScheduledTodayTasks = scheduledTodayTasks.filter { task -> !task.isCompleted }
+    val remainingPlannedMinutes = activeScheduledTodayTasks.sumOf { it.estimatedMinutes.coerceAtLeast(0) }
     val completedToday = tasks.count { task -> task.completedAt?.isToday() == true }
     val completedTasksToday = tasks.filter { task -> task.completedAt?.isToday() == true }
     val todayXp = completedTasksToday
         .filter { task -> task.xpAwarded }
         .sumOf { task -> GamificationManager.calculateTaskXp(task) }
-    val bestCategoryToday = completedTasksToday
-        .groupingBy { task -> task.category.ifBlank { "Без категории" } }
-        .eachCount()
-        .maxByOrNull { it.value }
-        ?.key
     val completedTodayFromTodayTasks = todayTasks.count { task -> task.isCompleted }
-    val todayProgress = if (todayTasks.isEmpty()) {
-        0f
-    } else {
-        completedTodayFromTodayTasks.toFloat() / todayTasks.size
-    }
-    val firstTask = activeScheduledTodayTasks.firstOrNull() ?: sortedTodayTasks.firstOrNull()
+    val todayProgress = if (todayTasks.isEmpty()) 0f else completedTodayFromTodayTasks.toFloat() / todayTasks.size
     val totalXp = GamificationManager.totalXp(tasks)
     val levelInfo = GamificationManager.levelInfo(totalXp)
+    val firstTask = activeScheduledTodayTasks.firstOrNull() ?: sortedTodayTasks.firstOrNull()
     val isTodayFullyCompleted = todayTasks.isNotEmpty() && activeTodayTasks.isEmpty()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
             text = stringResource(R.string.today_title),
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineSmall
         )
 
         if (tasks.isEmpty()) {
             InfoCard {
                 Text(
                     text = stringResource(R.string.dashboard_empty_state),
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
                     onClick = onAddTask,
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
                 ) {
                     Text(text = stringResource(R.string.add_task))
                 }
@@ -108,31 +97,11 @@ fun DashboardScreen(
         }
 
         InfoCard {
+            Text(text = "Сегодня", style = MaterialTheme.typography.titleLarge)
+            CompactStatLine("Задач на дату", todayTasks.size.toString())
+            CompactStatLine("Выполнено сегодня", completedToday.toString())
             Text(
-                text = "Сегодня",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                SmallMetricCard(
-                    title = "Задач на дату",
-                    value = todayTasks.size.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                SmallMetricCard(
-                    title = stringResource(R.string.completed_today_count),
-                    value = completedToday.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Text(
-                text = stringResource(
-                    R.string.daily_progress_value,
-                    completedTodayFromTodayTasks,
-                    todayTasks.size
-                ),
+                text = stringResource(R.string.daily_progress_value, completedTodayFromTodayTasks, todayTasks.size),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -141,45 +110,13 @@ fun DashboardScreen(
                 onClick = { onOpenDayPlanner(todayStartMillis()) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Распределить задачи на день")
+                Text(text = "Распределить задачи")
             }
         }
 
-        if (firstTask != null) {
-            InfoCard(
-                highlighted = true
-            ) {
-                Text(
-                    text = "Начните с этого",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                TaskPreview(task = firstTask, important = true)
-            }
-        }
-
-        InfoCard {
-            Text(
-                text = "Уровень и прогресс",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text(
-                    text = "Уровень ${levelInfo.level}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "$totalXp XP",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        InfoCard(highlighted = true) {
+            Text(text = "Прогресс", style = MaterialTheme.typography.titleLarge)
+            CompactStatLine("$totalXp XP", "Уровень ${levelInfo.level}")
             SoftProgress(progress = levelInfo.progress, modifier = Modifier.fillMaxWidth())
             Text(
                 text = "До следующего уровня: ${(levelInfo.nextLevelXp - totalXp).coerceAtLeast(0)} XP",
@@ -188,35 +125,21 @@ fun DashboardScreen(
             )
         }
 
-        InfoCard {
-            Text(
-                text = "Итог дня",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                SmallMetricCard(
-                    title = "Выполнено",
-                    value = completedToday.toString(),
-                    modifier = Modifier.weight(1f)
+        firstTask?.let { task ->
+            InfoCard {
+                Text(
+                    text = "Начать сейчас",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                SmallMetricCard(
-                    title = "XP сегодня",
-                    value = todayXp.toString(),
-                    modifier = Modifier.weight(1f)
-                )
+                TaskPreview(task = task, important = true)
             }
-            Text(
-                text = if (bestCategoryToday != null) {
-                    "Лучшее направление сегодня: $bestCategoryToday."
-                } else {
-                    "Завершите задачу, чтобы появился отчёт дня."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        }
+
+        InfoCard {
+            Text(text = "Итог дня", style = MaterialTheme.typography.titleLarge)
+            CompactStatLine("Выполнено", completedToday.toString())
+            CompactStatLine("XP сегодня", todayXp.toString())
             Text(
                 text = "Осталось на сегодня: ${activeTodayTasks.size} задач.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -226,185 +149,117 @@ fun DashboardScreen(
 
         InfoCard {
             Text(
-                text = if (allScheduledTodayTasks.isNotEmpty()) {
-                    "План на день"
-                } else {
-                    "Рекомендуемый план на сегодня"
-                },
+                text = if (scheduledTodayTasks.isNotEmpty()) "План на день" else "Рекомендуемый план",
                 style = MaterialTheme.typography.titleLarge
             )
-
-            if (isTodayFullyCompleted) {
-                Text(
-                    text = "Все задачи на сегодня выполнены. Отличная работа! Приходите с новыми задачами.",
+            when {
+                isTodayFullyCompleted -> Text(
+                    text = "Все задачи на сегодня выполнены.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else if (activeScheduledTodayTasks.isNotEmpty()) {
-                Text(
-                    text = "Осталось: ${activeScheduledTodayTasks.size} задач • ${remainingPlannedMinutes} мин",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                activeScheduledTodayTasks.forEach { task ->
-                    ScheduledTaskPreview(task = task)
+                activeScheduledTodayTasks.isNotEmpty() -> {
+                    Text(
+                        text = "Осталось: ${activeScheduledTodayTasks.size} задач • ${remainingPlannedMinutes} мин",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    activeScheduledTodayTasks.forEach { task -> ScheduledTaskPreview(task = task) }
                 }
-            } else if (sortedTodayTasks.isEmpty()) {
-                Text(
+                sortedTodayTasks.isEmpty() -> Text(
                     text = "На сегодня активных задач нет.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Button(
-                    onClick = onAddTask,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Добавить задачу")
-                }
-            } else {
-                sortedTodayTasks.forEach { task ->
-                    TaskPreview(task = task)
-                }
+                else -> sortedTodayTasks.forEach { task -> TaskPreview(task = task) }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = onOpenTasks,
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                 ) {
-                    Text(
-                        text = "Задачи",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(text = "Задачи", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                if (allScheduledTodayTasks.isNotEmpty()) {
-                    Button(
-                        onClick = { onOpenDayPlanner(todayStartMillis()) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
-                    ) {
-                        Text(
-                            text = "План",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                Button(
+                    onClick = { onOpenDayPlanner(todayStartMillis()) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                ) {
+                    Text(text = "План", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
+    }
+}
 
-        Button(
-            onClick = onAddTask,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = stringResource(R.string.add_task))
-        }
+@Composable
+private fun CompactStatLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
 @Composable
 private fun ScheduledTaskPreview(task: TaskEntity) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = formatTime(task.scheduledStartTime),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(0.22f)
         )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = formatTime(task.scheduledStartTime),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = formatTime(task.scheduledEndTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "${task.category} • ${priorityLabel(task.priority)} • ${difficultyLabel(task.difficulty)} • ${task.estimatedMinutes} мин • ${statusLabel(task)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SmallMetricCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        TaskPreview(task = task, modifier = Modifier.weight(0.78f))
     }
 }
 
 @Composable
 private fun TaskPreview(
     task: TaskEntity,
+    modifier: Modifier = Modifier,
     important: Boolean = false
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
         Text(
             text = task.title,
             style = if (important) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
-            fontWeight = if (important) FontWeight.SemiBold else FontWeight.Normal
+            fontWeight = if (important) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             text = buildTaskInfo(task),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -419,7 +274,7 @@ private fun InfoCard(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = if (highlighted) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
@@ -427,17 +282,17 @@ private fun InfoCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content
         )
     }
 }
 
 private fun buildTaskInfo(task: TaskEntity): String {
-    val dateText = task.dueDate?.let { "Дата: ${formatDate(it)}" } ?: "Дата не выбрана"
+    val dateText = task.dueDate?.let { formatDate(it) } ?: "Дата не выбрана"
     val timeText = if (task.scheduledStartTime != null && task.scheduledEndTime != null) {
-        " • ${formatTime(task.scheduledStartTime)}–${formatTime(task.scheduledEndTime)}"
+        " • ${formatTime(task.scheduledStartTime)}-${formatTime(task.scheduledEndTime)}"
     } else {
         ""
     }
@@ -451,14 +306,12 @@ private fun Long.isToday(): Boolean {
 }
 
 private fun formatDate(timestamp: Long): String {
-    val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
 }
 
 private fun formatTime(timestamp: Long?): String {
     if (timestamp == null) return "--:--"
-    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
 
 private fun todayStartMillis(): Long {
@@ -466,24 +319,4 @@ private fun todayStartMillis(): Long {
         .atStartOfDay(ZoneId.systemDefault())
         .toInstant()
         .toEpochMilli()
-}
-
-private fun priorityLabel(priority: String): String {
-    return when (priority) {
-        "high" -> "высокий"
-        "medium" -> "средний"
-        else -> "низкий"
-    }
-}
-
-private fun difficultyLabel(difficulty: String): String {
-    return when (difficulty) {
-        "hard" -> "сложная"
-        "medium" -> "средняя"
-        else -> "лёгкая"
-    }
-}
-
-private fun statusLabel(task: TaskEntity): String {
-    return if (task.isCompleted) "выполнена" else "активна"
 }
