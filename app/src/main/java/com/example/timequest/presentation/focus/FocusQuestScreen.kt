@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.timequest.notifications.TaskReminderScheduler
+import com.example.timequest.presentation.tasks.FocusSessionUiState
 import com.example.timequest.presentation.tasks.TaskViewModel
 import kotlinx.coroutines.delay
 
@@ -64,7 +65,7 @@ fun FocusQuestScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(text = "Фокус-квест") },
+                title = { Text(text = "Фокус") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -84,57 +85,15 @@ fun FocusQuestScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (session == null) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Фокус не запущен",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Вернитесь к задачам и нажмите “Фокус-квест” на нужной задаче.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                EmptyFocusCard(onNavigateBack = onNavigateBack)
                 return@Column
             }
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.32f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Text(
-                        text = session.taskTitle,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Цель квеста: удержать фокус и закрыть задачу.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = formatTimer(remainingSeconds),
-                        style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+            FocusTimerCard(
+                session = session,
+                remainingSeconds = remainingSeconds,
+                progress = progress
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -147,47 +106,20 @@ fun FocusQuestScreen(
                         } else {
                             taskViewModel.resumeFocusQuest()
                         }
-                        if (updated?.isRunning == true) {
-                            TaskReminderScheduler.showFocusNotification(
-                                context = context,
-                                taskTitle = updated.taskTitle,
-                                endAtMillis = updated.endAtMillis
-                            )
-                            TaskReminderScheduler.scheduleFocusFinished(
-                                context = context,
-                                taskId = updated.taskId,
-                                endAtMillis = updated.endAtMillis
-                            )
-                        } else if (updated != null) {
-                            TaskReminderScheduler.cancelFocusFinished(context)
-                            TaskReminderScheduler.showFocusNotification(
-                                context = context,
-                                taskTitle = updated.taskTitle,
-                                endAtMillis = null,
-                                remainingSeconds = updated.remainingSeconds
-                            )
-                        }
+                        updateFocusNotification(context, updated)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(text = if (session.isRunning) "Пауза" else "Старт")
+                    Text(text = if (session.isRunning) "Пауза" else "Продолжить")
                 }
                 OutlinedButton(
                     onClick = {
                         val updated = taskViewModel.resetFocusQuest()
-                        if (updated != null) {
-                            TaskReminderScheduler.cancelFocusFinished(context)
-                            TaskReminderScheduler.showFocusNotification(
-                                context = context,
-                                taskTitle = updated.taskTitle,
-                                endAtMillis = null,
-                                remainingSeconds = updated.remainingSeconds
-                            )
-                        }
+                        updateFocusNotification(context, updated)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(text = "Сброс")
+                    Text(text = "Сбросить таймер")
                 }
             }
 
@@ -216,6 +148,101 @@ fun FocusQuestScreen(
                 Text(text = "Остановить фокус")
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyFocusCard(onNavigateBack: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Фокус не запущен",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Выберите активную задачу и нажмите «Начать фокус».",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(onClick = onNavigateBack) {
+                Text(text = "Вернуться")
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusTimerCard(
+    session: FocusSessionUiState,
+    remainingSeconds: Int,
+    progress: Float
+) {
+    val isFinished = remainingSeconds <= 0
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.32f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = session.taskTitle,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = if (isFinished) {
+                    "Время фокуса закончилось. Отметьте результат задачи."
+                } else {
+                    "Сконцентрируйтесь на одной задаче. Можно выйти с экрана и вернуться по таймеру."
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = formatTimer(remainingSeconds),
+                style = MaterialTheme.typography.displayMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+private fun updateFocusNotification(
+    context: android.content.Context,
+    session: FocusSessionUiState?
+) {
+    if (session == null) return
+    if (session.isRunning) {
+        TaskReminderScheduler.showFocusNotification(
+            context = context,
+            taskTitle = session.taskTitle,
+            endAtMillis = session.endAtMillis
+        )
+        TaskReminderScheduler.scheduleFocusFinished(
+            context = context,
+            taskId = session.taskId,
+            endAtMillis = session.endAtMillis
+        )
+    } else {
+        TaskReminderScheduler.cancelFocusFinished(context)
+        TaskReminderScheduler.showFocusNotification(
+            context = context,
+            taskTitle = session.taskTitle,
+            endAtMillis = null,
+            remainingSeconds = session.remainingSeconds
+        )
     }
 }
 

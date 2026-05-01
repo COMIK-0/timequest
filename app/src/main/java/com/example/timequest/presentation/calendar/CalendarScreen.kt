@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,7 +50,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun CalendarScreen(taskViewModel: TaskViewModel) {
+fun CalendarScreen(
+    taskViewModel: TaskViewModel,
+    onAddTaskForDate: (Long) -> Unit,
+    onOpenDayPlanner: (Long) -> Unit
+) {
     val tasks by taskViewModel.allTasks.collectAsState()
     var visibleMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
@@ -85,6 +90,15 @@ fun CalendarScreen(taskViewModel: TaskViewModel) {
             onDateSelected = { selectedDate = it }
         )
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LegendItem(color = MaterialTheme.colorScheme.primary, text = "есть план")
+            LegendItem(color = MaterialTheme.colorScheme.secondary, text = "есть выполнение")
+        }
+
         SectionCard(
             title = selectedDate.format(DateTimeFormatter.ofPattern("d MMMM", Locale("ru"))),
             subtitle = "План и результат за выбранный день"
@@ -94,6 +108,23 @@ fun CalendarScreen(taskViewModel: TaskViewModel) {
             } else {
                 selectedTasks.forEach { task ->
                     CalendarTaskRow(task = task)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { onAddTaskForDate(selectedDate.startMillis()) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "Добавить задачу", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Button(
+                    onClick = { onOpenDayPlanner(selectedDate.startMillis()) },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = "План дня", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -243,6 +274,24 @@ private fun Dot(color: androidx.compose.ui.graphics.Color) {
 }
 
 @Composable
+private fun LegendItem(
+    color: androidx.compose.ui.graphics.Color,
+    text: String
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Dot(color)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun SectionCard(
     title: String,
     subtitle: String,
@@ -321,4 +370,10 @@ private fun LocalDate.previousOrSame(dayOfWeek: DayOfWeek): LocalDate {
         date = date.minusDays(1)
     }
     return date
+}
+
+private fun LocalDate.startMillis(): Long {
+    return atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
 }

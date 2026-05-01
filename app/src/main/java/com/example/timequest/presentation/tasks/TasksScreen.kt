@@ -68,7 +68,7 @@ fun TasksScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val sortMenuWidth = 212.dp
+    val sortMenuWidth = 190.dp
 
     fun startFocusFor(task: TaskEntity) {
         val session = taskViewModel.startFocusQuest(task)
@@ -83,6 +83,15 @@ fun TasksScreen(
             endAtMillis = session.endAtMillis
         )
         onStartFocus()
+    }
+
+    fun openOrStartFocusFor(task: TaskEntity) {
+        val currentFocus = focusSession
+        if (currentFocus?.taskId == task.id) {
+            onStartFocus()
+        } else {
+            startFocusFor(task)
+        }
     }
 
     pendingFocusTask?.let { task ->
@@ -112,7 +121,12 @@ fun TasksScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingFocusTask = null }) {
+                TextButton(
+                    onClick = {
+                        pendingFocusTask = null
+                        onStartFocus()
+                    }
+                ) {
                     Text(text = "Оставить текущий")
                 }
             }
@@ -170,7 +184,7 @@ fun TasksScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Порядок задач",
+                    text = "Сортировка",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -276,12 +290,17 @@ fun TasksScreen(
                                     taskViewModel.toggleComplete(task)
                                 },
                                 onEditClick = { onEditTask(task.id) },
+                                focusActionLabel = if (focusSession?.taskId == task.id) {
+                                    "Вернуться в фокус"
+                                } else {
+                                    "Начать фокус"
+                                },
                                 onFocusClick = { selectedTask ->
                                     val currentFocus = focusSession
                                     if (currentFocus != null && currentFocus.taskId != selectedTask.id) {
                                         pendingFocusTask = selectedTask
                                     } else {
-                                        startFocusFor(selectedTask)
+                                        openOrStartFocusFor(selectedTask)
                                     }
                                 },
                                 onDeleteClick = {
@@ -300,10 +319,10 @@ fun TasksScreen(
 @Composable
 private fun sortLabel(sortOption: TaskSortOption): String {
     return when (sortOption) {
-        TaskSortOption.SMART -> stringResource(R.string.sort_smart)
-        TaskSortOption.DEADLINE -> stringResource(R.string.sort_deadline)
-        TaskSortOption.PRIORITY -> stringResource(R.string.sort_priority)
-        TaskSortOption.TIME -> stringResource(R.string.sort_time)
+        TaskSortOption.SMART -> "Умный порядок"
+        TaskSortOption.DEADLINE -> "Дата"
+        TaskSortOption.PRIORITY -> "Приоритет"
+        TaskSortOption.TIME -> "Время"
     }
 }
 

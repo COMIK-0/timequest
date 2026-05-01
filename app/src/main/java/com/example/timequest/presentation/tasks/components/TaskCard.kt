@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,16 +17,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,7 +46,6 @@ import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
 import com.example.timequest.domain.GamificationManager
 import com.example.timequest.presentation.components.AppChip
-import com.example.timequest.presentation.components.DifficultyChip
 import com.example.timequest.presentation.components.PriorityChip
 import com.example.timequest.presentation.components.XpBadge
 import com.example.timequest.presentation.components.priorityColor
@@ -58,9 +62,11 @@ fun TaskCard(
     task: TaskEntity,
     onToggleComplete: () -> Unit,
     onEditClick: () -> Unit,
+    focusActionLabel: String = "Начать фокус",
     onFocusClick: (TaskEntity) -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     val taskXp = GamificationManager.calculateTaskXp(task)
     val completeActionDescription = if (task.isCompleted) {
         "Вернуть задачу ${task.title} в активные"
@@ -128,25 +134,57 @@ fun TaskCard(
                         }
                     }
 
-                    Row {
+                    Box {
                         IconButton(
-                            onClick = onEditClick,
+                            onClick = { menuExpanded = true },
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Edit,
-                                contentDescription = stringResource(R.string.edit_task),
+                                imageVector = Icons.Outlined.MoreVert,
+                                contentDescription = "Действия с задачей",
                                 modifier = Modifier.size(21.dp)
                             )
                         }
-                        IconButton(
-                            onClick = onDeleteClick,
-                            modifier = Modifier.size(40.dp)
+
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 6.dp,
+                            shadowElevation = 6.dp,
+                            shape = MaterialTheme.shapes.medium
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Delete,
-                                contentDescription = stringResource(R.string.delete_task),
-                                modifier = Modifier.size(21.dp)
+                            DropdownMenuItem(
+                                text = { Text(text = stringResource(R.string.edit_task)) },
+                                leadingIcon = {
+                                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onEditClick()
+                                }
+                            )
+                            if (!task.isCompleted) {
+                                DropdownMenuItem(
+                                    text = { Text(text = focusActionLabel) },
+                                    leadingIcon = {
+                                        Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onFocusClick(task)
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(text = stringResource(R.string.delete_task)) },
+                                leadingIcon = {
+                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDeleteClick()
+                                }
                             )
                         }
                     }
@@ -158,7 +196,6 @@ fun TaskCard(
                 ) {
                     XpBadge(xp = taskXp)
                     PriorityChip(priority = task.priority)
-                    DifficultyChip(difficulty = task.difficulty)
                     if (task.scheduledStartTime != null && task.scheduledEndTime != null) {
                         AppChip(
                             text = "${formatTime(task.scheduledStartTime)}-${formatTime(task.scheduledEndTime)}",
@@ -167,12 +204,6 @@ fun TaskCard(
                     }
                     if (task.category.isNotBlank()) {
                         AppChip(text = task.category, color = MaterialTheme.colorScheme.secondary)
-                    }
-                    if (task.estimatedMinutes > 0) {
-                        AppChip(
-                            text = stringResource(R.string.minutes_value, task.estimatedMinutes),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
 
@@ -209,23 +240,10 @@ fun TaskCard(
                             }
                         }
                         Text(
-                            text = if (task.isCompleted) "Выполнена" else "Активная",
+                            text = taskStatusText(task),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (task.isCompleted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = taskStatusColor(task)
                         )
-                    }
-                    if (!task.isCompleted) {
-                        TextButton(
-                            onClick = { onFocusClick(task) },
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(text = "Фокус", maxLines = 1)
-                        }
                     }
                 }
 
@@ -260,4 +278,22 @@ private fun Long.isNearDeadline(): Boolean {
 private fun Long.isOverdue(): Boolean {
     val date = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
     return date < LocalDate.now()
+}
+
+@Composable
+private fun taskStatusText(task: TaskEntity): String {
+    return when {
+        task.isCompleted -> "Выполнена"
+        task.dueDate?.isOverdue() == true -> "Просрочена"
+        else -> "Активная"
+    }
+}
+
+@Composable
+private fun taskStatusColor(task: TaskEntity): androidx.compose.ui.graphics.Color {
+    return when {
+        task.isCompleted -> MaterialTheme.colorScheme.secondary
+        task.dueDate?.isOverdue() == true -> priorityColor("high")
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 }

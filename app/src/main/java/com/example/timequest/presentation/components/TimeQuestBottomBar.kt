@@ -23,7 +23,11 @@ import com.example.timequest.R
 import com.example.timequest.navigation.AppDestination
 
 @Composable
-fun TimeQuestBottomBar(navController: NavHostController) {
+fun TimeQuestBottomBar(
+    navController: NavHostController,
+    selectedRouteOverride: String? = null,
+    onNavigationRequested: ((() -> Unit) -> Unit)? = null
+) {
     val currentBackStack = navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStack.value?.destination
     val items = listOf(
@@ -54,20 +58,28 @@ fun TimeQuestBottomBar(navController: NavHostController) {
         tonalElevation = 0.dp
     ) {
         items.forEach { item ->
-            val selected = currentDestination
-                ?.hierarchy
-                ?.any { it.route == item.destination.route } == true
+            val selected = selectedRouteOverride?.let { it == item.destination.route }
+                ?: (currentDestination
+                    ?.hierarchy
+                    ?.any { it.route == item.destination.route } == true)
 
             NavigationBarItem(
                 selected = selected,
                 onClick = {
                     if (!selected) {
-                        navController.navigate(item.destination.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = false
+                        val navigate = {
+                            navController.navigate(item.destination.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = false
+                                }
+                                launchSingleTop = true
+                                restoreState = false
                             }
-                            launchSingleTop = true
-                            restoreState = false
+                        }
+                        if (onNavigationRequested != null) {
+                            onNavigationRequested(navigate)
+                        } else {
+                            navigate()
                         }
                     }
                 },

@@ -80,6 +80,7 @@ fun DayPlannerScreen(
     taskViewModel: TaskViewModel,
     initialDateMillis: Long?,
     onNavigateBack: () -> Unit,
+    onAddTaskForDate: (Long) -> Unit,
     onPlanSaved: () -> Unit
 ) {
     val context = LocalContext.current
@@ -189,7 +190,15 @@ fun DayPlannerScreen(
             }
 
             AppCard {
-                SectionTitle(title = "Свободное время")
+                Text(
+                    text = "Сценарий: выберите дату, добавьте свободное время, укажите энергию, распределите задачи и сохраните план.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            AppCard {
+                SectionTitle(title = "1. Свободное время")
                 if (freeTimeSlots.isEmpty()) {
                     Text(
                         text = "Добавьте один или несколько промежутков для планирования.",
@@ -227,7 +236,7 @@ fun DayPlannerScreen(
             }
 
             AppCard {
-                SectionTitle(title = "Распределение")
+                SectionTitle(title = "2. Энергия и распределение")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -279,6 +288,15 @@ fun DayPlannerScreen(
                     text = "${cleanBalanceText(dayBalance.title)}. ${cleanBalanceText(dayBalance.description)}",
                     isWarning = dayBalance.isWarning
                 )
+                if (activeTasksForDate.isEmpty()) {
+                    OutlinedButton(
+                        onClick = { onAddTaskForDate(selectedDateMillis) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(text = "Добавить задачу на эту дату")
+                    }
+                }
                 Button(
                     onClick = {
                         val validationMessage = validatePlanInput(activeTasksForDate, freeTimeSlots)
@@ -366,7 +384,12 @@ fun DayPlannerScreen(
 
             if (scheduledTasks.isNotEmpty()) {
                 AppCard {
-                    SectionTitle(title = "Расписание")
+                    SectionTitle(title = "3. Проверьте план")
+                    Text(
+                        text = "План построен, но ещё не сохранён. Можно поменять порядок задач и затем нажать «Сохранить план».",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     scheduledTasks.forEachIndexed { index, task ->
                         TimelineTaskRow(
                             task = task,

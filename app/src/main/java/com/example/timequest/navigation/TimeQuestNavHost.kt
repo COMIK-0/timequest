@@ -19,12 +19,22 @@ import com.example.timequest.presentation.profile.ProfileScreen
 import com.example.timequest.presentation.taskedit.AddTaskWizardScreen
 import com.example.timequest.presentation.tasks.TaskViewModel
 import com.example.timequest.presentation.tasks.TasksScreen
+import com.example.timequest.ui.theme.AppThemeMode
+import com.example.timequest.ui.theme.AppThemeStyle
 
 @Composable
 fun TimeQuestNavHost(
     navController: NavHostController,
     innerPadding: PaddingValues,
-    taskViewModel: TaskViewModel
+    taskViewModel: TaskViewModel,
+    navigationGuardState: NavigationGuardState,
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit,
+    themeStyle: AppThemeStyle,
+    unlockedThemeStyles: Set<AppThemeStyle>,
+    spentXp: Int,
+    onThemeStyleChange: (AppThemeStyle) -> Unit,
+    onThemeStylePurchase: (AppThemeStyle, Int) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -46,7 +56,9 @@ fun TimeQuestNavHost(
                     }
                 },
                 onAddTask = {
-                    navController.navigate(AppDestination.TaskEditor.createRoute()) {
+                    navController.navigate(
+                        AppDestination.TaskEditor.createRoute(returnTo = AppDestination.Dashboard.route)
+                    ) {
                         launchSingleTop = true
                     }
                 },
@@ -74,6 +86,14 @@ fun TimeQuestNavHost(
                 taskViewModel = taskViewModel,
                 initialDateMillis = initialDateMillis,
                 onNavigateBack = { navController.popBackStack() },
+                onAddTaskForDate = { dateMillis ->
+                    navController.navigate(
+                        AppDestination.TaskEditor.createRoute(
+                            dueDateMillis = dateMillis,
+                            returnTo = AppDestination.DayPlanner.route
+                        )
+                    )
+                },
                 onPlanSaved = {
                     navController.popBackStack(
                         route = AppDestination.Dashboard.route,
@@ -86,10 +106,17 @@ fun TimeQuestNavHost(
             TasksScreen(
                 taskViewModel = taskViewModel,
                 onAddTask = {
-                    navController.navigate(AppDestination.TaskEditor.createRoute())
+                    navController.navigate(
+                        AppDestination.TaskEditor.createRoute(returnTo = AppDestination.Tasks.route)
+                    )
                 },
                 onEditTask = { taskId ->
-                    navController.navigate(AppDestination.TaskEditor.createRoute(taskId))
+                    navController.navigate(
+                        AppDestination.TaskEditor.createRoute(
+                            taskId = taskId,
+                            returnTo = AppDestination.Tasks.route
+                        )
+                    )
                 },
                 onStartFocus = {
                     navController.navigate(AppDestination.FocusQuest.route) {
@@ -110,40 +137,82 @@ fun TimeQuestNavHost(
                 navArgument(AppDestination.TaskEditor.taskIdArg) {
                     type = NavType.LongType
                     defaultValue = -1L
+                },
+                navArgument(AppDestination.TaskEditor.dueDateArg) {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                },
+                navArgument(AppDestination.TaskEditor.returnToArg) {
+                    type = NavType.StringType
+                    defaultValue = AppDestination.Tasks.route
                 }
             )
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getLong(AppDestination.TaskEditor.taskIdArg)
                 ?.takeIf { it != -1L }
+            val dueDate = backStackEntry.arguments?.getLong(AppDestination.TaskEditor.dueDateArg)
+                ?.takeIf { it != -1L }
+            val returnTo = backStackEntry.arguments?.getString(AppDestination.TaskEditor.returnToArg)
+                ?: AppDestination.Tasks.route
 
             AddTaskWizardScreen(
                 taskId = taskId,
+                initialDueDateMillis = dueDate,
                 taskViewModel = taskViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
+                onNavigationGuardChanged = navigationGuardState::updateHandler,
                 onTaskSaved = {
-                    val returnedToTasks = navController.popBackStack(
-                        route = AppDestination.Tasks.route,
-                        inclusive = false
-                    )
-                    if (!returnedToTasks) {
-                        navController.navigate(AppDestination.Tasks.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = false
+                    if (returnTo == AppDestination.DayPlanner.route) {
+                        navController.popBackStack()
+                    } else {
+                        val returned = navController.popBackStack(
+                            route = returnTo,
+                            inclusive = false
+                        )
+                        if (!returned) {
+                            navController.navigate(returnTo) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = false
+                                }
+                                launchSingleTop = true
+                                restoreState = false
                             }
-                            launchSingleTop = true
-                            restoreState = false
                         }
                     }
                 }
             )
         }
         composable(AppDestination.Calendar.route) {
-            CalendarScreen(taskViewModel = taskViewModel)
+            CalendarScreen(
+                taskViewModel = taskViewModel,
+                onAddTaskForDate = { dateMillis ->
+                    navController.navigate(
+                        AppDestination.TaskEditor.createRoute(
+                            dueDateMillis = dateMillis,
+                            returnTo = AppDestination.Calendar.route
+                        )
+                    )
+                },
+                onOpenDayPlanner = { dateMillis ->
+                    navController.navigate(AppDestination.DayPlanner.createRoute(dateMillis)) {
+                        launchSingleTop = true
+                    }
+                }
+            )
         }
         composable(AppDestination.Profile.route) {
-            ProfileScreen(taskViewModel = taskViewModel)
+            ProfileScreen(
+                taskViewModel = taskViewModel,
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange,
+                themeStyle = themeStyle,
+                unlockedThemeStyles = unlockedThemeStyles,
+                spentXp = spentXp,
+                onThemeStyleChange = onThemeStyleChange,
+                onThemeStylePurchase = onThemeStylePurchase
+            )
         }
     }
 }

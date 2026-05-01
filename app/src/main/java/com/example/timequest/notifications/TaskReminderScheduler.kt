@@ -32,6 +32,7 @@ object TaskReminderScheduler {
     const val ACTION_FOCUS_COMPLETE = "com.example.timequest.ACTION_FOCUS_COMPLETE"
     const val ACTION_FOCUS_NOT_DONE = "com.example.timequest.ACTION_FOCUS_NOT_DONE"
     const val EXTRA_TASK_ID = "task_id"
+    const val EXTRA_OPEN_FOCUS = "open_focus"
     const val CHANNEL_ID = "task_reminders"
     private const val FOCUS_NOTIFICATION_ID = 40_000
     private const val FOCUS_FINISHED_NOTIFICATION_ID = 40_001
@@ -180,17 +181,8 @@ object TaskReminderScheduler {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setContentIntent(openAppIntent(context))
-
-        if (endAtMillis != null) {
-            builder
-                .setWhen(endAtMillis)
-                .setShowWhen(true)
-                .setUsesChronometer(true)
-                .setChronometerCountDown(true)
-        } else {
-            builder.setShowWhen(false)
-        }
+            .setShowWhen(false)
+            .setContentIntent(openAppIntent(context, openFocus = true))
 
         NotificationManagerCompat.from(context).notify(FOCUS_NOTIFICATION_ID, builder.build())
     }
@@ -218,7 +210,7 @@ object TaskReminderScheduler {
             .setContentText(taskTitle)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$taskTitle\n$text"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(openAppIntent(context))
+            .setContentIntent(openAppIntent(context, openFocus = true))
             .setAutoCancel(true)
             .addAction(
                 android.R.drawable.checkbox_on_background,
@@ -286,9 +278,10 @@ object TaskReminderScheduler {
         )
     }
 
-    private fun openAppIntent(context: Context): PendingIntent {
+    private fun openAppIntent(context: Context, openFocus: Boolean = false): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_OPEN_FOCUS, openFocus)
         }
         return PendingIntent.getActivity(
             context,

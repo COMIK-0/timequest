@@ -1,59 +1,51 @@
 package com.example.timequest.presentation.taskedit
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,8 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -76,7 +68,9 @@ import androidx.compose.ui.unit.dp
 import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
 import com.example.timequest.domain.GamificationManager
+import com.example.timequest.navigation.NavigationGuardHandler
 import com.example.timequest.notifications.TaskReminderScheduler
+import com.example.timequest.presentation.components.AppCard
 import com.example.timequest.presentation.tasks.TaskViewModel
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -89,52 +83,94 @@ import java.util.Locale
 @Composable
 fun AddTaskWizardScreen(
     taskId: Long?,
+    initialDueDateMillis: Long?,
     taskViewModel: TaskViewModel,
     onNavigateBack: () -> Unit,
+    onNavigationGuardChanged: (NavigationGuardHandler?) -> Unit,
     onTaskSaved: () -> Unit
 ) {
     val isEditMode = taskId != null
     val defaultCategory = stringResource(R.string.category_study)
-    val priorityItems = priorityOptions()
-    val difficultyItems = difficultyOptions()
     val context = LocalContext.current
 
-    var currentStep by rememberSaveable { mutableStateOf(0) }
     var title by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
-    var category by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf(defaultCategory) }
     var priority by rememberSaveable { mutableStateOf("medium") }
     var difficulty by rememberSaveable { mutableStateOf("medium") }
     var estimatedMinutes by rememberSaveable { mutableStateOf(30) }
-    var dueDate by rememberSaveable { mutableStateOf<Long?>(todayStartMillis()) }
+    var dueDate by rememberSaveable { mutableStateOf<Long?>(initialDueDateMillis ?: todayStartMillis()) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var titleError by rememberSaveable { mutableStateOf(false) }
     var isSaving by rememberSaveable { mutableStateOf(false) }
+    var hasUnsavedChanges by rememberSaveable { mutableStateOf(false) }
     var existingTask by remember { mutableStateOf<TaskEntity?>(null) }
+    var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    val stepCount = 6
-    val canGoNext = currentStep != 0 || title.isNotBlank()
+    fun markChanged() {
+        hasUnsavedChanges = true
+    }
 
-    LaunchedEffect(taskId) {
+    fun requestExit(action: () -> Unit) {
+        if (hasUnsavedChanges && !isSaving) {
+            pendingExitAction = action
+        } else {
+            action()
+        }
+    }
+
+    LaunchedEffect(taskId, defaultCategory) {
         if (taskId != null) {
             val task = taskViewModel.getTaskById(taskId)
             existingTask = task
             if (task != null) {
                 title = task.title
                 description = task.description
-                category = task.category
+                category = task.category.ifBlank { defaultCategory }
                 priority = task.priority
                 difficulty = task.difficulty
                 estimatedMinutes = task.estimatedMinutes
                 dueDate = task.dueDate
             }
+        } else if (category.isBlank()) {
+            category = defaultCategory
         }
     }
 
-    LaunchedEffect(defaultCategory) {
-        if (category.isBlank()) {
-            category = defaultCategory
+    BackHandler {
+        requestExit(onNavigateBack)
+    }
+
+    DisposableEffect(hasUnsavedChanges, isSaving) {
+        onNavigationGuardChanged { action ->
+            requestExit(action)
         }
+        onDispose {
+            onNavigationGuardChanged(null)
+        }
+    }
+
+    pendingExitAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { pendingExitAction = null },
+            title = { Text(text = "Выйти без сохранения?") },
+            text = { Text(text = "Изменения в задаче не будут сохранены.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingExitAction = null
+                        action()
+                    }
+                ) {
+                    Text(text = "Выйти")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingExitAction = null }) {
+                    Text(text = "Остаться")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -149,7 +185,7 @@ fun AddTaskWizardScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { requestExit(onNavigateBack) }) {
                         Icon(
                             imageVector = Icons.Outlined.ArrowBack,
                             contentDescription = stringResource(R.string.cancel)
@@ -163,146 +199,196 @@ fun AddTaskWizardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .imePadding(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            WizardProgress(
-                currentStep = currentStep,
-                stepCount = stepCount
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Заполните название, остальные параметры можно оставить по умолчанию.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-            AnimatedContent(
-                targetState = currentStep,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "task_wizard_step",
-                modifier = Modifier.weight(1f)
-            ) { step ->
-                StepCard {
-                    when (step) {
-                        0 -> MainInfoStep(
-                            title = title,
-                            description = description,
-                            titleError = titleError,
-                            onTitleChange = {
-                                title = it
-                                titleError = false
-                            },
-                            onDescriptionChange = { description = it }
-                        )
+                AppCard {
+                    SectionTitle("Основное")
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = {
+                            title = it
+                            titleError = false
+                            markChanged()
+                        },
+                        label = { Text(text = stringResource(R.string.task_title_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = titleError,
+                        supportingText = {
+                            if (titleError) {
+                                Text(text = stringResource(R.string.required_field))
+                            }
+                        },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = {
+                            description = it
+                            markChanged()
+                        },
+                        label = { Text(text = stringResource(R.string.task_description_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                    )
+                }
 
-                        1 -> CategoryStep(
-                            category = category,
-                            onCategoryChange = { category = it }
-                        )
+                AppCard {
+                    SectionTitle("Параметры")
+                    DropdownField(
+                        label = stringResource(R.string.task_category_label),
+                        selectedValue = category,
+                        options = categoryOptions(),
+                        onValueSelected = {
+                            category = it
+                            markChanged()
+                        }
+                    )
+                    Text(text = stringResource(R.string.priority_label), style = MaterialTheme.typography.titleSmall)
+                    OptionChips(
+                        selectedValue = priority,
+                        options = priorityOptions(),
+                        colorForValue = ::priorityColor,
+                        onSelected = {
+                            priority = it
+                            markChanged()
+                        }
+                    )
+                    Text(text = stringResource(R.string.difficulty_label), style = MaterialTheme.typography.titleSmall)
+                    OptionChips(
+                        selectedValue = difficulty,
+                        options = difficultyOptions(),
+                        colorForValue = ::difficultyColor,
+                        onSelected = {
+                            difficulty = it
+                            markChanged()
+                        }
+                    )
+                }
 
-                        2 -> PriorityDifficultyStep(
-                            priority = priority,
-                            difficulty = difficulty,
-                            priorityItems = priorityItems,
-                            difficultyItems = difficultyItems,
-                            onPriorityChange = { priority = it },
-                            onDifficultyChange = { difficulty = it }
-                        )
+                AppCard {
+                    SectionTitle("Планирование")
+                    DateField(
+                        dueDate = dueDate,
+                        onOpenDatePicker = { showDatePicker = true },
+                        onClearDate = {
+                            dueDate = null
+                            markChanged()
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.estimated_time_label),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    TimePickerInline(
+                        selectedMinutes = estimatedMinutes,
+                        onMinutesSelected = {
+                            estimatedMinutes = it
+                            markChanged()
+                        }
+                    )
+                }
 
-                        3 -> EstimatedTimeStep(
-                            estimatedMinutes = estimatedMinutes,
-                            onEstimatedMinutesChange = { estimatedMinutes = it }
-                        )
-
-                        4 -> DeadlineStep(
-                            dueDate = dueDate,
-                            onOpenDatePicker = { showDatePicker = true },
-                            onClearDate = { dueDate = null }
-                        )
-
-                        else -> ReviewStep(
-                            title = title,
-                            category = category.ifBlank { defaultCategory },
-                            priority = priority,
-                            difficulty = difficulty,
-                            estimatedMinutes = estimatedMinutes,
-                            dueDate = dueDate
-                        )
-                    }
+                AppCard(highlighted = true) {
+                    val expectedXp = expectedXp(
+                        title = title,
+                        category = category.ifBlank { defaultCategory },
+                        priority = priority,
+                        difficulty = difficulty,
+                        estimatedMinutes = estimatedMinutes,
+                        dueDate = dueDate
+                    )
+                    SectionTitle("Итог")
+                    SummaryLine("Награда", "$expectedXp XP")
+                    SummaryLine("Дата", dueDate?.let(::formatDate) ?: stringResource(R.string.no_due_date))
+                    SummaryLine("Время", stringResource(R.string.minutes_value, estimatedMinutes))
                 }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .imePadding()
-                    .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedButton(
-                    onClick = {
-                        if (currentStep == 0) {
-                            onNavigateBack()
-                        } else {
-                            currentStep--
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
+                    onClick = { requestExit(onNavigateBack) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
                 ) {
-                    Text(text = "Назад")
+                    Text(text = "Отмена")
                 }
-
                 Button(
                     onClick = {
-                        if (currentStep == 0 && title.isBlank()) {
+                        if (title.isBlank()) {
                             titleError = true
                             return@Button
                         }
+                        if (isSaving) return@Button
 
-                        if (currentStep < stepCount - 1) {
-                            currentStep++
-                        } else if (!isSaving) {
-                            isSaving = true
-                            val task = TaskEntity(
-                                id = existingTask?.id ?: 0,
-                                title = title.trim(),
-                                description = description.trim(),
-                                category = category.trim().ifBlank { defaultCategory },
-                                priority = priority,
-                                difficulty = difficulty,
-                                dueDate = dueDate,
-                                estimatedMinutes = estimatedMinutes,
-                                scheduledStartTime = existingTask?.scheduledStartTime,
-                                scheduledEndTime = existingTask?.scheduledEndTime,
-                                isCompleted = existingTask?.isCompleted ?: false,
-                                xpAwarded = existingTask?.xpAwarded ?: false,
-                                createdAt = existingTask?.createdAt ?: System.currentTimeMillis(),
-                                completedAt = existingTask?.completedAt
-                            )
+                        isSaving = true
+                        val task = TaskEntity(
+                            id = existingTask?.id ?: 0,
+                            title = title.trim(),
+                            description = description.trim(),
+                            category = category.trim().ifBlank { defaultCategory },
+                            priority = priority,
+                            difficulty = difficulty,
+                            dueDate = dueDate,
+                            estimatedMinutes = estimatedMinutes,
+                            scheduledStartTime = existingTask?.scheduledStartTime,
+                            scheduledEndTime = existingTask?.scheduledEndTime,
+                            isCompleted = existingTask?.isCompleted ?: false,
+                            xpAwarded = existingTask?.xpAwarded ?: false,
+                            createdAt = existingTask?.createdAt ?: System.currentTimeMillis(),
+                            completedAt = existingTask?.completedAt
+                        )
 
-                            if (isEditMode) {
-                                taskViewModel.updateTask(task) {
-                                    TaskReminderScheduler.cancelTaskReminder(context, task.id)
-                                    TaskReminderScheduler.scheduleTaskDeadline(
-                                        context = context,
-                                        taskId = task.id,
-                                        dueDate = task.dueDate,
-                                        scheduledStartTime = task.scheduledStartTime
-                                    )
-                                    onTaskSaved()
-                                }
-                            } else {
-                                taskViewModel.addTask(task) { savedTaskId ->
-                                    TaskReminderScheduler.scheduleTaskDeadline(
-                                        context = context,
-                                        taskId = savedTaskId,
-                                        dueDate = task.dueDate,
-                                        scheduledStartTime = task.scheduledStartTime
-                                    )
-                                    onTaskSaved()
-                                }
+                        if (isEditMode) {
+                            taskViewModel.updateTask(task) {
+                                TaskReminderScheduler.cancelTaskReminder(context, task.id)
+                                TaskReminderScheduler.scheduleTaskDeadline(
+                                    context = context,
+                                    taskId = task.id,
+                                    dueDate = task.dueDate,
+                                    scheduledStartTime = task.scheduledStartTime
+                                )
+                                hasUnsavedChanges = false
+                                onTaskSaved()
+                            }
+                        } else {
+                            taskViewModel.addTask(task) { savedTaskId ->
+                                TaskReminderScheduler.scheduleTaskDeadline(
+                                    context = context,
+                                    taskId = savedTaskId,
+                                    dueDate = task.dueDate,
+                                    scheduledStartTime = task.scheduledStartTime
+                                )
+                                hasUnsavedChanges = false
+                                onTaskSaved()
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
-                    enabled = (canGoNext || currentStep == stepCount - 1) && !isSaving
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp),
+                    enabled = !isSaving
                 ) {
-                    Text(text = if (currentStep == stepCount - 1) "Сохранить" else "Далее")
+                    Text(text = stringResource(R.string.save))
                 }
             }
         }
@@ -325,6 +411,7 @@ fun AddTaskWizardScreen(
                     onClick = {
                         dueDate = datePickerState.selectedDateMillis
                         showDatePicker = false
+                        markChanged()
                     }
                 ) {
                     Text(text = stringResource(R.string.date_picker_ok))
@@ -364,164 +451,62 @@ fun AddTaskWizardScreen(
 }
 
 @Composable
-private fun WizardProgress(
-    currentStep: Int,
-    stepCount: Int
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Шаг ${currentStep + 1} из $stepCount",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stepTitle(currentStep),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        LinearProgressIndicator(
-            progress = { (currentStep + 1).toFloat() / stepCount },
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold
+    )
 }
 
 @Composable
-private fun StepCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxSize(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+private fun SummaryLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
         )
     }
-}
-
-@Composable
-private fun MainInfoStep(
-    title: String,
-    description: String,
-    titleError: Boolean,
-    onTitleChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit
-) {
-    StepHeader(
-        title = "Что нужно сделать?",
-        subtitle = "Сначала запишите задачу простыми словами."
-    )
-    OutlinedTextField(
-        value = title,
-        onValueChange = onTitleChange,
-        label = { Text(text = stringResource(R.string.task_title_label)) },
-        modifier = Modifier.fillMaxWidth(),
-        isError = titleError,
-        supportingText = {
-            if (titleError) {
-                Text(text = stringResource(R.string.required_field))
-            }
-        },
-        singleLine = true
-    )
-    OutlinedTextField(
-        value = description,
-        onValueChange = onDescriptionChange,
-        label = { Text(text = stringResource(R.string.task_description_label)) },
-        modifier = Modifier.fillMaxWidth(),
-        minLines = 4
-    )
-}
-
-@Composable
-private fun CategoryStep(
-    category: String,
-    onCategoryChange: (String) -> Unit
-) {
-    StepHeader(
-        title = "Выберите категорию",
-        subtitle = "Категория помогает видеть, куда уходит время."
-    )
-    DropdownField(
-        label = stringResource(R.string.task_category_label),
-        selectedValue = category,
-        options = categoryOptions(),
-        onValueSelected = onCategoryChange
-    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PriorityDifficultyStep(
-    priority: String,
-    difficulty: String,
-    priorityItems: List<WizardFormOption>,
-    difficultyItems: List<WizardFormOption>,
-    onPriorityChange: (String) -> Unit,
-    onDifficultyChange: (String) -> Unit
+private fun OptionChips(
+    selectedValue: String,
+    options: List<FormOption>,
+    colorForValue: (String) -> Color,
+    onSelected: (String) -> Unit
 ) {
-    StepHeader(
-        title = "Оцените задачу",
-        subtitle = "Приоритет и сложность влияют на порядок и XP."
-    )
-    Text(
-        text = stringResource(R.string.priority_label),
-        style = MaterialTheme.typography.titleSmall
-    )
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        priorityItems.forEach { item ->
+        options.forEach { option ->
+            val color = colorForValue(option.value)
             FilterChip(
-                selected = priority == item.value,
-                onClick = { onPriorityChange(item.value) },
-                label = { Text(text = item.label) },
+                selected = selectedValue == option.value,
+                onClick = { onSelected(option.value) },
+                label = { Text(text = option.label) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = priorityColor(item.value).copy(alpha = 0.22f),
-                    selectedLabelColor = priorityColor(item.value)
+                    selectedContainerColor = color.copy(alpha = 0.22f),
+                    selectedLabelColor = color
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
-                    selected = priority == item.value,
-                    borderColor = priorityColor(item.value).copy(alpha = 0.65f),
-                    selectedBorderColor = priorityColor(item.value)
-                )
-            )
-        }
-    }
-    Text(
-        text = stringResource(R.string.difficulty_label),
-        style = MaterialTheme.typography.titleSmall
-    )
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        difficultyItems.forEach { item ->
-            FilterChip(
-                selected = difficulty == item.value,
-                onClick = { onDifficultyChange(item.value) },
-                label = { Text(text = item.label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = difficultyColor(item.value).copy(alpha = 0.22f),
-                    selectedLabelColor = difficultyColor(item.value)
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = difficulty == item.value,
-                    borderColor = difficultyColor(item.value).copy(alpha = 0.65f),
-                    selectedBorderColor = difficultyColor(item.value)
+                    selected = selectedValue == option.value,
+                    borderColor = color.copy(alpha = 0.65f),
+                    selectedBorderColor = color
                 )
             )
         }
@@ -529,30 +514,11 @@ private fun PriorityDifficultyStep(
 }
 
 @Composable
-private fun EstimatedTimeStep(
-    estimatedMinutes: Int,
-    onEstimatedMinutesChange: (Int) -> Unit
-) {
-    StepHeader(
-        title = "Сколько займет задача?",
-        subtitle = "Выберите примерную длительность с шагом 5 минут."
-    )
-    TimeWheelPicker(
-        selectedMinutes = estimatedMinutes,
-        onMinutesSelected = onEstimatedMinutesChange
-    )
-}
-
-@Composable
-private fun DeadlineStep(
+private fun DateField(
     dueDate: Long?,
     onOpenDatePicker: () -> Unit,
     onClearDate: () -> Unit
 ) {
-    StepHeader(
-        title = "К какому дню выполнить?",
-        subtitle = "Прошедшие даты выбрать нельзя."
-    )
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = dueDate?.let(::formatDate) ?: "",
@@ -582,105 +548,6 @@ private fun DeadlineStep(
         TextButton(onClick = onClearDate) {
             Text(text = stringResource(R.string.clear_due_date))
         }
-    }
-}
-
-@Composable
-private fun ReviewStep(
-    title: String,
-    category: String,
-    priority: String,
-    difficulty: String,
-    estimatedMinutes: Int,
-    dueDate: Long?
-) {
-    val previewTask = TaskEntity(
-        title = title.trim(),
-        description = "",
-        category = category,
-        priority = priority,
-        difficulty = difficulty,
-        estimatedMinutes = estimatedMinutes,
-        dueDate = dueDate,
-        createdAt = System.currentTimeMillis()
-    )
-    val expectedXp = GamificationManager.calculateTaskXp(previewTask)
-
-    StepHeader(
-        title = "Проверьте задачу",
-        subtitle = "Если всё верно, сохраните задачу."
-    )
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "$expectedXp XP",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Примерная награда за выполнение",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-    SummaryRow(label = stringResource(R.string.task_title_label), value = title)
-    SummaryRow(label = stringResource(R.string.task_category_label), value = category)
-    SummaryRow(label = stringResource(R.string.priority_label), value = priorityOptionLabel(priority))
-    SummaryRow(label = stringResource(R.string.difficulty_label), value = difficultyOptionLabel(difficulty))
-    SummaryRow(
-        label = stringResource(R.string.estimated_time_label),
-        value = stringResource(R.string.minutes_value, estimatedMinutes)
-    )
-    SummaryRow(
-        label = stringResource(R.string.due_date_label),
-        value = dueDate?.let(::formatDate) ?: stringResource(R.string.no_due_date)
-    )
-}
-
-@Composable
-private fun StepHeader(
-    title: String,
-    subtitle: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun SummaryRow(
-    label: String,
-    value: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value.ifBlank { "Не указано" },
-            style = MaterialTheme.typography.titleMedium
-        )
     }
 }
 
@@ -716,7 +583,7 @@ private fun DropdownField(
                 .onGloballyPositioned { coordinates ->
                     fieldSize = coordinates.size
                 }
-                .fillMaxWidth(),
+                .fillMaxWidth()
         )
 
         Box(
@@ -751,53 +618,27 @@ private fun DropdownField(
 }
 
 @Composable
-private fun TimeWheelPicker(
+private fun TimePickerInline(
     selectedMinutes: Int,
     onMinutesSelected: (Int) -> Unit
 ) {
-    val minutes = selectedMinutes.coerceIn(0, 480)
+    val minutes = selectedMinutes.coerceIn(5, 480)
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.minutes_value, minutes),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Будет сохранено это значение",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.minutes_value, minutes),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             OutlinedButton(
-                onClick = { onMinutesSelected((minutes - 5).coerceAtLeast(0)) },
+                onClick = { onMinutesSelected((minutes - 5).coerceAtLeast(5)) },
                 modifier = Modifier.weight(1f),
-                enabled = minutes > 0
+                enabled = minutes > 5
             ) {
                 Text(text = "-5 мин")
             }
@@ -809,48 +650,35 @@ private fun TimeWheelPicker(
                 Text(text = "+5 мин")
             }
         }
-
-        Slider(
-            value = minutes.toFloat(),
-            onValueChange = { value ->
-                val roundedValue = (value / 5).toInt() * 5
-                onMinutesSelected(roundedValue.coerceIn(0, 480))
-            },
-            valueRange = 0f..480f,
-            steps = 95,
-            modifier = Modifier.fillMaxWidth()
+        TimeScaleControl(
+            minutes = minutes,
+            onMinutesSelected = onMinutesSelected
         )
     }
 }
 
 @Composable
-private fun stepTitle(step: Int): String {
-    return when (step) {
-        0 -> stringResource(R.string.section_main_info)
-        1 -> stringResource(R.string.task_category_label)
-        2 -> stringResource(R.string.section_task_params)
-        3 -> "Время"
-        4 -> stringResource(R.string.due_date_label)
-        else -> "Итог"
-    }
-}
-
-@Composable
-private fun priorityOptionLabel(value: String): String {
-    return when (value) {
-        "high" -> stringResource(R.string.priority_high)
-        "medium" -> stringResource(R.string.priority_medium)
-        else -> stringResource(R.string.priority_low)
-    }
-}
-
-@Composable
-private fun difficultyOptionLabel(value: String): String {
-    return when (value) {
-        "hard" -> stringResource(R.string.difficulty_hard)
-        "medium" -> stringResource(R.string.difficulty_medium)
-        else -> stringResource(R.string.difficulty_easy)
-    }
+private fun TimeScaleControl(
+    minutes: Int,
+    onMinutesSelected: (Int) -> Unit
+) {
+    Slider(
+        value = minutes.toFloat(),
+        onValueChange = { value ->
+            val roundedValue = (value / 5).toInt() * 5
+            onMinutesSelected(roundedValue.coerceIn(5, 480))
+        },
+        valueRange = 5f..480f,
+        steps = 94,
+        colors = SliderDefaults.colors(
+            activeTrackColor = MaterialTheme.colorScheme.primary,
+            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+            thumbColor = MaterialTheme.colorScheme.primary
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+    )
 }
 
 @Composable
@@ -868,27 +696,48 @@ private fun categoryOptions(): List<String> {
 }
 
 @Composable
-private fun priorityOptions(): List<WizardFormOption> {
+private fun priorityOptions(): List<FormOption> {
     return listOf(
-        WizardFormOption("low", stringResource(R.string.priority_low)),
-        WizardFormOption("medium", stringResource(R.string.priority_medium)),
-        WizardFormOption("high", stringResource(R.string.priority_high))
+        FormOption("low", stringResource(R.string.priority_low)),
+        FormOption("medium", stringResource(R.string.priority_medium)),
+        FormOption("high", stringResource(R.string.priority_high))
     )
 }
 
 @Composable
-private fun difficultyOptions(): List<WizardFormOption> {
+private fun difficultyOptions(): List<FormOption> {
     return listOf(
-        WizardFormOption("easy", stringResource(R.string.difficulty_easy)),
-        WizardFormOption("medium", stringResource(R.string.difficulty_medium)),
-        WizardFormOption("hard", stringResource(R.string.difficulty_hard))
+        FormOption("easy", stringResource(R.string.difficulty_easy)),
+        FormOption("medium", stringResource(R.string.difficulty_medium)),
+        FormOption("hard", stringResource(R.string.difficulty_hard))
     )
 }
 
-private data class WizardFormOption(
+private data class FormOption(
     val value: String,
     val label: String
 )
+
+private fun expectedXp(
+    title: String,
+    category: String,
+    priority: String,
+    difficulty: String,
+    estimatedMinutes: Int,
+    dueDate: Long?
+): Int {
+    val previewTask = TaskEntity(
+        title = title.trim().ifBlank { "Задача" },
+        description = "",
+        category = category,
+        priority = priority,
+        difficulty = difficulty,
+        estimatedMinutes = estimatedMinutes,
+        dueDate = dueDate,
+        createdAt = System.currentTimeMillis()
+    )
+    return GamificationManager.calculateTaskXp(previewTask)
+}
 
 private fun priorityColor(priority: String): Color {
     return when (priority) {
@@ -907,8 +756,7 @@ private fun difficultyColor(difficulty: String): Color {
 }
 
 private fun formatDate(timestamp: Long): String {
-    val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    return formatter.format(Date(timestamp))
+    return SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
 }
 
 private fun todayStartMillis(): Long {

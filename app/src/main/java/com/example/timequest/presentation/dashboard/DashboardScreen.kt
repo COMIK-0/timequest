@@ -17,6 +17,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -75,7 +76,7 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = stringResource(R.string.today_title),
+            text = stringResource(R.string.dashboard_title),
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -98,7 +99,7 @@ fun DashboardScreen(
 
         InfoCard {
             Text(text = "Сегодня", style = MaterialTheme.typography.titleLarge)
-            CompactStatLine("Задач на дату", todayTasks.size.toString())
+            CompactStatLine("Запланировано", todayTasks.size.toString())
             CompactStatLine("Выполнено сегодня", completedToday.toString())
             Text(
                 text = stringResource(R.string.daily_progress_value, completedTodayFromTodayTasks, todayTasks.size),
@@ -106,11 +107,26 @@ fun DashboardScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             SoftProgress(progress = todayProgress, modifier = Modifier.fillMaxWidth())
-            Button(
-                onClick = { onOpenDayPlanner(todayStartMillis()) },
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "Распределить задачи")
+                OutlinedButton(
+                    onClick = onAddTask,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                ) {
+                    Text(text = "Добавить", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Button(
+                    onClick = { onOpenDayPlanner(todayStartMillis()) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                ) {
+                    Text(text = "План дня", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
 
@@ -149,7 +165,7 @@ fun DashboardScreen(
 
         InfoCard {
             Text(
-                text = if (scheduledTodayTasks.isNotEmpty()) "План на день" else "Рекомендуемый план",
+                text = if (scheduledTodayTasks.isNotEmpty()) "План на сегодня" else "Что делать дальше",
                 style = MaterialTheme.typography.titleLarge
             )
             when {
@@ -174,26 +190,8 @@ fun DashboardScreen(
                 else -> sortedTodayTasks.forEach { task -> TaskPreview(task = task) }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onOpenTasks,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 44.dp)
-                ) {
-                    Text(text = "Задачи", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Button(
-                    onClick = { onOpenDayPlanner(todayStartMillis()) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 44.dp)
-                ) {
-                    Text(text = "План", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+            TextButton(onClick = onOpenTasks) {
+                Text(text = "Открыть список задач")
             }
         }
     }

@@ -26,14 +26,18 @@ sealed class AppDestination(
     object TaskEditor {
         const val route = "task_editor"
         const val taskIdArg = "taskId"
-        const val routeWithArg = "$route?$taskIdArg={$taskIdArg}"
+        const val dueDateArg = "dueDate"
+        const val returnToArg = "returnTo"
+        const val routeWithArg = "$route?$taskIdArg={$taskIdArg}&$dueDateArg={$dueDateArg}&$returnToArg={$returnToArg}"
 
-        fun createRoute(taskId: Long? = null): String {
-            return if (taskId != null) {
-                "$route?$taskIdArg=$taskId"
-            } else {
-                route
-            }
+        fun createRoute(
+            taskId: Long? = null,
+            dueDateMillis: Long? = null,
+            returnTo: String = Tasks.route
+        ): String {
+            val taskPart = taskId ?: -1L
+            val dueDatePart = dueDateMillis ?: -1L
+            return "$route?$taskIdArg=$taskPart&$dueDateArg=$dueDatePart&$returnToArg=$returnTo"
         }
     }
 

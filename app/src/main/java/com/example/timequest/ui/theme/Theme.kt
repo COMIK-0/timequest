@@ -5,10 +5,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+
+enum class AppThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK
+}
+
+enum class AppThemeStyle {
+    CLASSIC,
+    FOREST,
+    SUNSET,
+    COSMOS,
+    OCEAN,
+    SAKURA,
+    GRAPHITE
+}
 
 private val LightColors = lightColorScheme(
     primary = PrimaryBlue,
@@ -53,13 +73,82 @@ private val AppShapes = Shapes(
 
 @Composable
 fun TimeQuestTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    themeStyle: AppThemeStyle = AppThemeStyle.CLASSIC,
     content: @Composable () -> Unit
 ) {
+    val view = LocalView.current
+    val darkTheme = when (themeMode) {
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+    val colorScheme = themedColorScheme(
+        base = if (darkTheme) DarkColors else LightColors,
+        style = themeStyle,
+        darkTheme = darkTheme
+    )
+
+    SideEffect {
+        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        window.statusBarColor = colorScheme.background.toArgb()
+        window.navigationBarColor = colorScheme.surfaceContainer.toArgb()
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !darkTheme
+            isAppearanceLightNavigationBars = !darkTheme
+        }
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         typography = AppTypography,
         shapes = AppShapes,
         content = content
     )
+}
+
+private fun themedColorScheme(
+    base: androidx.compose.material3.ColorScheme,
+    style: AppThemeStyle,
+    darkTheme: Boolean
+): androidx.compose.material3.ColorScheme {
+    return when (style) {
+        AppThemeStyle.CLASSIC -> base
+        AppThemeStyle.FOREST -> base.copy(
+            primary = if (darkTheme) Color(0xFF8EDDB5) else Color(0xFF207A4C),
+            secondary = if (darkTheme) Color(0xFFB7D99A) else Color(0xFF5C7F2B),
+            primaryContainer = if (darkTheme) Color(0xFF1F3A2D) else Color(0xFFDDF4E9),
+            secondaryContainer = if (darkTheme) Color(0xFF2B3721) else Color(0xFFE9F4D8)
+        )
+        AppThemeStyle.SUNSET -> base.copy(
+            primary = if (darkTheme) Color(0xFFFFB08A) else Color(0xFFC65332),
+            secondary = if (darkTheme) Color(0xFFFFD166) else Color(0xFF8A5A00),
+            primaryContainer = if (darkTheme) Color(0xFF4A2B22) else Color(0xFFFFE1D3),
+            secondaryContainer = if (darkTheme) Color(0xFF3D3016) else Color(0xFFFFEDC2)
+        )
+        AppThemeStyle.COSMOS -> base.copy(
+            primary = if (darkTheme) Color(0xFFB9A7FF) else Color(0xFF5A4ACB),
+            secondary = if (darkTheme) Color(0xFF8BDDF0) else Color(0xFF087B91),
+            primaryContainer = if (darkTheme) Color(0xFF302A55) else Color(0xFFE6E0FF),
+            secondaryContainer = if (darkTheme) Color(0xFF183B44) else Color(0xFFD5F5FB)
+        )
+        AppThemeStyle.OCEAN -> base.copy(
+            primary = if (darkTheme) Color(0xFF7CC7FF) else Color(0xFF086CA8),
+            secondary = if (darkTheme) Color(0xFF74E4D1) else Color(0xFF00796B),
+            primaryContainer = if (darkTheme) Color(0xFF12364F) else Color(0xFFD7ECFF),
+            secondaryContainer = if (darkTheme) Color(0xFF163E39) else Color(0xFFD0F4EC)
+        )
+        AppThemeStyle.SAKURA -> base.copy(
+            primary = if (darkTheme) Color(0xFFFFA8C7) else Color(0xFFB83268),
+            secondary = if (darkTheme) Color(0xFFFFD6A5) else Color(0xFF9A5A00),
+            primaryContainer = if (darkTheme) Color(0xFF4A2334) else Color(0xFFFFD9E6),
+            secondaryContainer = if (darkTheme) Color(0xFF3F301E) else Color(0xFFFFEBCF)
+        )
+        AppThemeStyle.GRAPHITE -> base.copy(
+            primary = if (darkTheme) Color(0xFFE1E7EF) else Color(0xFF3F4A56),
+            secondary = if (darkTheme) Color(0xFFB5C2D0) else Color(0xFF66717F),
+            primaryContainer = if (darkTheme) Color(0xFF303844) else Color(0xFFE4E8EE),
+            secondaryContainer = if (darkTheme) Color(0xFF252C34) else Color(0xFFD9DEE5)
+        )
+    }
 }
