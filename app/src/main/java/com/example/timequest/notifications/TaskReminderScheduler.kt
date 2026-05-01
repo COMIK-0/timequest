@@ -26,8 +26,8 @@ import kotlin.math.absoluteValue
 
 object TaskReminderScheduler {
     const val ACTION_TASK_DEADLINE = "com.example.timequest.ACTION_TASK_DEADLINE"
-    const val ACTION_DAILY_PLAN = "com.example.timequest.ACTION_DAILY_PLAN"
-    const val ACTION_DEBUG_NOTIFICATION = "com.example.timequest.ACTION_DEBUG_NOTIFICATION"
+    const val ACTION_MORNING_PLAN = "com.example.timequest.ACTION_MORNING_PLAN"
+    const val ACTION_EVENING_SUMMARY = "com.example.timequest.ACTION_EVENING_SUMMARY"
     const val ACTION_FOCUS_FINISHED = "com.example.timequest.ACTION_FOCUS_FINISHED"
     const val ACTION_FOCUS_COMPLETE = "com.example.timequest.ACTION_FOCUS_COMPLETE"
     const val ACTION_FOCUS_NOT_DONE = "com.example.timequest.ACTION_FOCUS_NOT_DONE"
@@ -36,6 +36,8 @@ object TaskReminderScheduler {
     const val CHANNEL_ID = "task_reminders"
     private const val FOCUS_NOTIFICATION_ID = 40_000
     private const val FOCUS_FINISHED_NOTIFICATION_ID = 40_001
+    private const val MORNING_NOTIFICATION_REQUEST_ID = 10_001
+    private const val EVENING_NOTIFICATION_REQUEST_ID = 10_002
     private const val EXACT_ALARM_PREFS = "exact_alarm_permission"
     private const val KEY_EXACT_ALARM_REQUESTED = "exact_alarm_requested"
 
@@ -75,6 +77,7 @@ object TaskReminderScheduler {
         scheduledStartTime: Long? = null
     ) {
         cancelTaskReminder(context, taskId)
+        if (!NotificationSettings.areTaskNotificationsEnabled(context)) return
 
         val triggerAt = if (scheduledStartTime != null) {
             scheduledStartTime - 5 * 60_000L
@@ -109,17 +112,6 @@ object TaskReminderScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
-    }
-
-    fun scheduleDebugNotification(context: Context) {
-        val pendingIntent = debugReminderPendingIntent(context)
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val triggerAt = System.currentTimeMillis() + 30_000L
-        if (canScheduleExactAlarm(context, alarmManager)) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-        } else {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-        }
     }
 
     fun scheduleFocusFinished(context: Context, taskId: Long, endAtMillis: Long?) {
@@ -240,18 +232,6 @@ object TaskReminderScheduler {
         )
     }
 
-    private fun debugReminderPendingIntent(context: Context): PendingIntent {
-        val intent = Intent(context, TaskReminderReceiver::class.java).apply {
-            action = ACTION_DEBUG_NOTIFICATION
-        }
-        return PendingIntent.getBroadcast(
-            context,
-            DEBUG_TASK_ID.toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
     private fun focusFinishedPendingIntent(context: Context, taskId: Long): PendingIntent {
         val intent = Intent(context, TaskReminderReceiver::class.java).apply {
             action = ACTION_FOCUS_FINISHED
@@ -318,8 +298,40 @@ object TaskReminderScheduler {
     }
 
     fun scheduleDailyPlan(context: Context) {
+        scheduleDailyNotifications(context)
+    }
+
+    fun scheduleDailyNotifications(context: Context) {
+        scheduleDailyAlarm(
+            context = context,
+            action = ACTION_MORNING_PLAN,
+            requestId = MORNING_NOTIFICATION_REQUEST_ID,
+            time = LocalTime.of(9, 0)
+        )
+        scheduleDailyAlarm(
+            context = context,
+            action = ACTION_EVENING_SUMMARY,
+            requestId = EVENING_NOTIFICATION_REQUEST_ID,
+            time = LocalTime.of(20, 0)
+        )
+    }
+
+    fun cancelMorningNotification(context: Context) {
+        cancelDailyAlarm(context, ACTION_MORNING_PLAN, MORNING_NOTIFICATION_REQUEST_ID)
+    }
+
+    fun cancelEveningNotification(context: Context) {
+        cancelDailyAlarm(context, ACTION_EVENING_SUMMARY, EVENING_NOTIFICATION_REQUEST_ID)
+    }
+
+    private fun scheduleDailyAlarm(
+        context: Context,
+        action: String,
+        requestId: Int,
+        time: LocalTime
+    ) {
         val now = LocalDate.now().atTime(LocalTime.now())
-        var nextTime = LocalDate.now().atTime(LocalTime.of(9, 0))
+        var nextTime = LocalDate.now().atTime(time)
         if (!nextTime.isAfter(now)) {
             nextTime = nextTime.plusDays(1)
         }
@@ -330,11 +342,11 @@ object TaskReminderScheduler {
             .toEpochMilli()
 
         val intent = Intent(context, TaskReminderReceiver::class.java).apply {
-            action = ACTION_DAILY_PLAN
+            this.action = action
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            10_001,
+            requestId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -346,5 +358,19 @@ object TaskReminderScheduler {
             pendingIntent
         )
     }
-    private const val DEBUG_TASK_ID = -30_000L
+
+    private fun cancelDailyAlarm(context: Context, action: String, requestId: Int) {
+        val intent = Intent(context, TaskReminderReceiver::class.java).apply {
+            this.action = action
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+    }
 }

@@ -1,8 +1,11 @@
 package com.example.timequest.presentation.dashboard
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,19 +26,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
+import com.example.timequest.domain.DailyGoal
 import com.example.timequest.domain.GamificationManager
 import com.example.timequest.domain.TaskPrioritizer
+import com.example.timequest.presentation.components.AppCard
+import com.example.timequest.presentation.components.EmptyStateCard
 import com.example.timequest.presentation.components.SoftProgress
 import com.example.timequest.presentation.tasks.TaskViewModel
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
@@ -57,6 +65,7 @@ fun DashboardScreen(
     val activeScheduledTodayTasks = scheduledTodayTasks.filter { task -> !task.isCompleted }
     val remainingPlannedMinutes = activeScheduledTodayTasks.sumOf { it.estimatedMinutes.coerceAtLeast(0) }
     val completedToday = tasks.count { task -> task.completedAt?.isToday() == true }
+    val dailyGoalCompleted = DailyGoal.completedToday(tasks)
     val completedTasksToday = tasks.filter { task -> task.completedAt?.isToday() == true }
     val todayXp = completedTasksToday
         .filter { task -> task.xpAwarded }
@@ -73,76 +82,61 @@ fun DashboardScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = stringResource(R.string.dashboard_title),
             style = MaterialTheme.typography.headlineSmall
         )
 
-        if (tasks.isEmpty()) {
-            InfoCard {
-                Text(
-                    text = stringResource(R.string.dashboard_empty_state),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Button(
-                    onClick = onAddTask,
-                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
-                ) {
-                    Text(text = stringResource(R.string.add_task))
+        DashboardHero(
+            totalTasks = todayTasks.size,
+            completedTasks = completedTodayFromTodayTasks,
+            progress = todayProgress,
+            onAddTask = onAddTask,
+            onOpenDayPlanner = { onOpenDayPlanner(todayStartMillis()) }
+        )
+
+        DailyGoalCard(completed = dailyGoalCompleted)
+
+        AnimatedVisibility(visible = tasks.isEmpty()) {
+            EmptyStateCard(
+                title = "Задач пока нет",
+                subtitle = "Добавьте первую задачу и начните зарабатывать XP",
+                action = {
+                    Button(
+                        onClick = onAddTask,
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(text = stringResource(R.string.add_task))
+                    }
                 }
-            }
+            )
+        }
+
+        if (tasks.isEmpty()) {
             return@Column
         }
 
-        InfoCard {
-            Text(text = "Сегодня", style = MaterialTheme.typography.titleLarge)
-            CompactStatLine("Запланировано", todayTasks.size.toString())
-            CompactStatLine("Выполнено сегодня", completedToday.toString())
-            Text(
-                text = stringResource(R.string.daily_progress_value, completedTodayFromTodayTasks, todayTasks.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            SoftProgress(progress = todayProgress, modifier = Modifier.fillMaxWidth())
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onAddTask,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 44.dp)
-                ) {
-                    Text(text = "Добавить", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Button(
-                    onClick = { onOpenDayPlanner(todayStartMillis()) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 44.dp)
-                ) {
-                    Text(text = "План дня", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+        AppCard(highlighted = true) {
+            Text(text = "Прогресс", style = MaterialTheme.typography.titleLarge)
+            CompactStatLine("$totalXp XP", "Уровень ${levelInfo.level}")
+            SoftProgress(progress = levelInfo.progress, modifier = Modifier.fillMaxWidth(), height = 8.dp)
+            AnimatedContent(
+                targetState = (levelInfo.nextLevelXp - totalXp).coerceAtLeast(0),
+                label = "xp to next level"
+            ) { remainingXp ->
+                Text(
+                    text = "До следующего уровня: $remainingXp XP",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
-        InfoCard(highlighted = true) {
-            Text(text = "Прогресс", style = MaterialTheme.typography.titleLarge)
-            CompactStatLine("$totalXp XP", "Уровень ${levelInfo.level}")
-            SoftProgress(progress = levelInfo.progress, modifier = Modifier.fillMaxWidth())
-            Text(
-                text = "До следующего уровня: ${(levelInfo.nextLevelXp - totalXp).coerceAtLeast(0)} XP",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
         firstTask?.let { task ->
-            InfoCard {
+            AppCard {
                 Text(
                     text = "Начать сейчас",
                     style = MaterialTheme.typography.titleLarge,
@@ -152,7 +146,7 @@ fun DashboardScreen(
             }
         }
 
-        InfoCard {
+        AppCard {
             Text(text = "Итог дня", style = MaterialTheme.typography.titleLarge)
             CompactStatLine("Выполнено", completedToday.toString())
             CompactStatLine("XP сегодня", todayXp.toString())
@@ -163,7 +157,7 @@ fun DashboardScreen(
             )
         }
 
-        InfoCard {
+        AppCard {
             Text(
                 text = if (scheduledTodayTasks.isNotEmpty()) "План на сегодня" else "Что делать дальше",
                 style = MaterialTheme.typography.titleLarge
@@ -176,23 +170,149 @@ fun DashboardScreen(
                 )
                 activeScheduledTodayTasks.isNotEmpty() -> {
                     Text(
-                        text = "Осталось: ${activeScheduledTodayTasks.size} задач • ${remainingPlannedMinutes} мин",
+                        text = "Осталось: ${activeScheduledTodayTasks.size} задач • $remainingPlannedMinutes мин",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     activeScheduledTodayTasks.forEach { task -> ScheduledTaskPreview(task = task) }
                 }
-                sortedTodayTasks.isEmpty() -> Text(
-                    text = "На сегодня активных задач нет.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                sortedTodayTasks.isEmpty() -> {
+                    Text(
+                        text = "Составьте план на день",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Выберите задачи на сегодня и распределите их по времени.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 else -> sortedTodayTasks.forEach { task -> TaskPreview(task = task) }
             }
 
             TextButton(onClick = onOpenTasks) {
                 Text(text = "Открыть список задач")
             }
+        }
+    }
+}
+
+@Composable
+private fun DashboardHero(
+    totalTasks: Int,
+    completedTasks: Int,
+    progress: Float,
+    onAddTask: () -> Unit,
+    onOpenDayPlanner: () -> Unit
+) {
+    val greeting = if (LocalTime.now().hour in 18..23) "Добрый вечер" else "Добрый день"
+    val heroBrush = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f),
+            MaterialTheme.colorScheme.surface
+        )
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(heroBrush)
+                .padding(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = greeting,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    AnimatedContent(targetState = totalTasks, label = "today task count") { count ->
+                        Text(
+                            text = "Сегодня задач: $count",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "Выполнено",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AnimatedContent(
+                        targetState = "$completedTasks из $totalTasks",
+                        label = "dashboard completed count"
+                    ) { value ->
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                SoftProgress(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 12.dp
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onAddTask,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                    ) {
+                        Text(text = "Добавить", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Button(
+                        onClick = onOpenDayPlanner,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 44.dp)
+                    ) {
+                        Text(text = "План дня", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyGoalCard(completed: Int) {
+    val progress = completed.toFloat() / DailyGoal.TARGET_TASKS
+    val displayedCompleted = DailyGoal.displayedCompleted(completed)
+    AppCard(highlighted = true) {
+        Text(text = "Цель дня", style = MaterialTheme.typography.titleLarge)
+        CompactStatLine("Выполнено", "$displayedCompleted из ${DailyGoal.TARGET_TASKS}")
+        SoftProgress(progress = progress, modifier = Modifier.fillMaxWidth(), height = 8.dp)
+        AnimatedVisibility(visible = completed >= DailyGoal.TARGET_TASKS) {
+            Text(
+                text = "Цель выполнена",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -209,12 +329,14 @@ private fun CompactStatLine(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
-        )
+        AnimatedContent(targetState = value, label = "stat value") { animatedValue ->
+            Text(
+                text = animatedValue,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -262,35 +384,10 @@ private fun TaskPreview(
     }
 }
 
-@Composable
-private fun InfoCard(
-    highlighted: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = if (highlighted) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            content = content
-        )
-    }
-}
-
 private fun buildTaskInfo(task: TaskEntity): String {
     val dateText = task.dueDate?.let { formatDate(it) } ?: "Дата не выбрана"
     val timeText = if (task.scheduledStartTime != null && task.scheduledEndTime != null) {
-        " • ${formatTime(task.scheduledStartTime)}-${formatTime(task.scheduledEndTime)}"
+        " • ${formatTime(task.scheduledStartTime)}–${formatTime(task.scheduledEndTime)}"
     } else {
         ""
     }

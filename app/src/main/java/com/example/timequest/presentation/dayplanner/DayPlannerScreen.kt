@@ -1,6 +1,5 @@
 package com.example.timequest.presentation.dayplanner
 
-import android.content.pm.ApplicationInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +60,7 @@ import com.example.timequest.domain.EnergyLevel
 import com.example.timequest.domain.FreeTimeSlot
 import com.example.timequest.notifications.TaskReminderScheduler
 import com.example.timequest.presentation.components.AppCard
+import com.example.timequest.presentation.components.EmptyStateCard
 import com.example.timequest.presentation.components.MetricCard
 import com.example.timequest.presentation.components.difficultyLabel
 import com.example.timequest.presentation.components.priorityColor
@@ -197,6 +197,13 @@ fun DayPlannerScreen(
                 )
             }
 
+            if (existingPlannedTasksForDate.isEmpty() && scheduledTasks.isEmpty()) {
+                EmptyStateCard(
+                    title = "Составьте план на день",
+                    subtitle = "Добавьте свободное время, распределите задачи и сохраните расписание."
+                )
+            }
+
             AppCard {
                 SectionTitle(title = "1. Свободное время")
                 if (freeTimeSlots.isEmpty()) {
@@ -326,18 +333,6 @@ fun DayPlannerScreen(
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text(text = "Распределить задачи")
-                }
-                if (isDebugBuild(context)) {
-                    OutlinedButton(
-                        onClick = {
-                            TaskReminderScheduler.scheduleDebugNotification(context)
-                            message = "Тестовое уведомление запланировано через 30 секунд."
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(text = "Тест уведомления через 30 секунд")
-                    }
                 }
                 if (existingPlannedTasksForDate.isNotEmpty() || scheduledTasks.isNotEmpty()) {
                     OutlinedButton(
@@ -756,10 +751,6 @@ private fun inferFreeTimeSlot(tasks: List<TaskEntity>): FreeTimeSlot {
     val start = tasks.mapNotNull { it.scheduledStartTime }.minOrNull() ?: todayStartMillis()
     val end = tasks.mapNotNull { it.scheduledEndTime }.maxOrNull() ?: (start + 60 * 60_000L)
     return FreeTimeSlot(start, end)
-}
-
-private fun isDebugBuild(context: android.content.Context): Boolean {
-    return context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 }
 
 private fun cleanBalanceText(text: String): String {

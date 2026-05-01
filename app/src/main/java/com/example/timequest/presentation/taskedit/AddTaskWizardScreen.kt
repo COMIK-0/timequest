@@ -1,7 +1,11 @@
 package com.example.timequest.presentation.taskedit
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,8 +42,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,7 +57,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -78,6 +82,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -617,20 +622,53 @@ private fun DropdownField(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TimePickerInline(
     selectedMinutes: Int,
     onMinutesSelected: (Int) -> Unit
 ) {
-    val minutes = selectedMinutes.coerceIn(5, 480)
+    val minutes = selectedMinutes.coerceIn(5, 360)
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.minutes_value, minutes),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
+    LaunchedEffect(selectedMinutes) {
+        if (selectedMinutes != minutes) {
+            onMinutesSelected(minutes)
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Text(
+                text = "Длительность",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        TimeScaleControl(
+            minutes = minutes,
+            onMinutesSelected = onMinutesSelected
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "5 мин",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "6 ч",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -643,17 +681,13 @@ private fun TimePickerInline(
                 Text(text = "-5 мин")
             }
             Button(
-                onClick = { onMinutesSelected((minutes + 5).coerceAtMost(480)) },
+                onClick = { onMinutesSelected((minutes + 5).coerceAtMost(360)) },
                 modifier = Modifier.weight(1f),
-                enabled = minutes < 480
+                enabled = minutes < 360
             ) {
                 Text(text = "+5 мин")
             }
         }
-        TimeScaleControl(
-            minutes = minutes,
-            onMinutesSelected = onMinutesSelected
-        )
     }
 }
 
@@ -662,23 +696,69 @@ private fun TimeScaleControl(
     minutes: Int,
     onMinutesSelected: (Int) -> Unit
 ) {
-    Slider(
-        value = minutes.toFloat(),
-        onValueChange = { value ->
-            val roundedValue = (value / 5).toInt() * 5
-            onMinutesSelected(roundedValue.coerceIn(5, 480))
-        },
-        valueRange = 5f..480f,
-        steps = 94,
-        colors = SliderDefaults.colors(
-            activeTrackColor = MaterialTheme.colorScheme.primary,
-            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-            thumbColor = MaterialTheme.colorScheme.primary
-        ),
+    val minMinutes = 5
+    val maxMinutes = 360
+    val progress = (minutes - minMinutes).toFloat() / (maxMinutes - minMinutes)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        label = "time slider progress"
+    )
+    var trackWidth by remember { mutableStateOf(0) }
+
+    fun selectMinutes(positionX: Float) {
+        if (trackWidth <= 0) return
+
+        val rawProgress = (positionX / trackWidth).coerceIn(0f, 1f)
+        val rawMinutes = minMinutes + rawProgress * (maxMinutes - minMinutes)
+        val roundedMinutes = (rawMinutes / 5).roundToInt() * 5
+        onMinutesSelected(roundedMinutes.coerceIn(minMinutes, maxMinutes))
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(42.dp)
-    )
+            .height(64.dp)
+            .onSizeChanged { size -> trackWidth = size.width }
+            .pointerInput(trackWidth) {
+                detectTapGestures { offset -> selectMinutes(offset.x) }
+            }
+            .pointerInput(trackWidth) {
+                detectDragGestures { change, _ -> selectMinutes(change.position.x) }
+            },
+        contentAlignment = Alignment.BottomStart
+    ) {
+        Text(
+            text = stringResource(R.string.minutes_value, minutes),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    shape = MaterialTheme.shapes.small
+                )
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    shape = MaterialTheme.shapes.extraSmall
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress)
+                .height(12.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = MaterialTheme.shapes.extraSmall
+                )
+        )
+    }
 }
 
 @Composable

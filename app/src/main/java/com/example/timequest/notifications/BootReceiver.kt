@@ -26,7 +26,7 @@ class BootReceiver : BroadcastReceiver() {
                         scheduledStartTime = task.scheduledStartTime
                     )
                 }
-                TaskReminderScheduler.scheduleDailyPlan(context)
+                TaskReminderScheduler.scheduleDailyNotifications(context)
             } finally {
                 pendingResult.finish()
             }

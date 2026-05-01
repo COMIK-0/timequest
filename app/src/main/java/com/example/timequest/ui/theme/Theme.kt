@@ -1,12 +1,14 @@
 package com.example.timequest.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.toArgb
@@ -88,11 +90,25 @@ fun TimeQuestTheme(
         style = themeStyle,
         darkTheme = darkTheme
     )
+    val animatedPrimary by animateColorAsState(colorScheme.primary, label = "theme primary")
+    val animatedSecondary by animateColorAsState(colorScheme.secondary, label = "theme secondary")
+    val animatedBackground by animateColorAsState(colorScheme.background, label = "theme background")
+    val animatedSurface by animateColorAsState(colorScheme.surface, label = "theme surface")
+    val animatedPrimaryContainer by animateColorAsState(colorScheme.primaryContainer, label = "theme primary container")
+    val animatedSecondaryContainer by animateColorAsState(colorScheme.secondaryContainer, label = "theme secondary container")
+    val animatedColorScheme = colorScheme.copy(
+        primary = animatedPrimary,
+        secondary = animatedSecondary,
+        background = animatedBackground,
+        surface = animatedSurface,
+        primaryContainer = animatedPrimaryContainer,
+        secondaryContainer = animatedSecondaryContainer
+    )
 
     SideEffect {
         val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
-        window.statusBarColor = colorScheme.background.toArgb()
-        window.navigationBarColor = colorScheme.surfaceContainer.toArgb()
+        window.statusBarColor = animatedColorScheme.background.toArgb()
+        window.navigationBarColor = animatedColorScheme.surfaceContainer.toArgb()
         WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = !darkTheme
             isAppearanceLightNavigationBars = !darkTheme
@@ -100,7 +116,7 @@ fun TimeQuestTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = animatedColorScheme,
         typography = AppTypography,
         shapes = AppShapes,
         content = content

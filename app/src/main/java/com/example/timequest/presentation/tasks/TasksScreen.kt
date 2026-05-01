@@ -50,6 +50,7 @@ import com.example.timequest.data.local.TaskEntity
 import com.example.timequest.domain.GamificationManager
 import com.example.timequest.domain.TaskSortOption
 import com.example.timequest.notifications.TaskReminderScheduler
+import com.example.timequest.presentation.components.EmptyStateCard
 import com.example.timequest.presentation.tasks.components.TaskCard
 import kotlinx.coroutines.launch
 
@@ -250,10 +251,19 @@ fun TasksScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = emptyStateText(uiState.selectedFilter),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        EmptyStateCard(
+                            title = emptyStateTitle(uiState.selectedFilter),
+                            subtitle = emptyStateSubtitle(uiState.selectedFilter),
+                            action = {
+                                if (uiState.selectedFilter != TaskFilter.COMPLETED) {
+                                    OutlinedButton(
+                                        onClick = onAddTask,
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    ) {
+                                        Text(text = stringResource(R.string.add_task))
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -273,10 +283,32 @@ fun TasksScreen(
                                 onToggleComplete = {
                                     if (!task.isCompleted) {
                                         val earnedXp = GamificationManager.calculateTaskXp(task)
+                                        val unlockedBefore = GamificationManager.achievements(taskViewModel.allTasks.value)
+                                            .filter { achievement -> achievement.isUnlocked }
+                                            .map { achievement -> achievement.title }
+                                            .toSet()
+                                        val updatedTasks = taskViewModel.allTasks.value.map { current ->
+                                            if (current.id == task.id) {
+                                                current.copy(
+                                                    isCompleted = true,
+                                                    xpAwarded = true,
+                                                    completedAt = System.currentTimeMillis()
+                                                )
+                                            } else {
+                                                current
+                                            }
+                                        }
+                                        val newAchievement = GamificationManager.achievements(updatedTasks)
+                                            .firstOrNull { achievement ->
+                                                achievement.isUnlocked && achievement.title !in unlockedBefore
+                                            }
                                         TaskReminderScheduler.cancelTaskReminder(context, task.id)
                                         if (!task.xpAwarded) {
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar("+$earnedXp XP за задачу")
+                                                newAchievement?.let { achievement ->
+                                                    snackbarHostState.showSnackbar("Достижение: ${achievement.title}")
+                                                }
                                             }
                                         }
                                     } else {
@@ -335,9 +367,16 @@ private fun filterLabel(filter: TaskFilter): String {
     }
 }
 
-private fun emptyStateText(selectedFilter: TaskFilter): String {
+private fun emptyStateTitle(selectedFilter: TaskFilter): String {
     if (selectedFilter == TaskFilter.COMPLETED) {
-        return "Выполненных задач здесь пока нет."
+        return "Выполненных задач пока нет"
     }
-    return "Активных задач пока нет."
+    return "Задач пока нет"
+}
+
+private fun emptyStateSubtitle(selectedFilter: TaskFilter): String {
+    if (selectedFilter == TaskFilter.COMPLETED) {
+        return "Завершайте задачи, чтобы видеть здесь историю прогресса."
+    }
+    return "Добавьте первую задачу и начните зарабатывать XP"
 }

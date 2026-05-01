@@ -30,8 +30,8 @@ class TaskReminderReceiver : BroadcastReceiver() {
                 TaskReminderScheduler.createNotificationChannel(context)
                 when (intent.action) {
                     TaskReminderScheduler.ACTION_TASK_DEADLINE -> showTaskDeadline(context, intent)
-                    TaskReminderScheduler.ACTION_DAILY_PLAN -> showDailyPlan(context)
-                    TaskReminderScheduler.ACTION_DEBUG_NOTIFICATION -> showDebugNotification(context)
+                    TaskReminderScheduler.ACTION_MORNING_PLAN -> showMorningPlan(context)
+                    TaskReminderScheduler.ACTION_EVENING_SUMMARY -> showEveningSummary(context)
                     TaskReminderScheduler.ACTION_FOCUS_FINISHED -> showFocusFinished(context, intent)
                     TaskReminderScheduler.ACTION_FOCUS_COMPLETE -> completeFocusTask(context, intent)
                     TaskReminderScheduler.ACTION_FOCUS_NOT_DONE -> keepFocusTaskActive(context)
@@ -43,6 +43,8 @@ class TaskReminderReceiver : BroadcastReceiver() {
     }
 
     private suspend fun showTaskDeadline(context: Context, intent: Intent) {
+        if (!NotificationSettings.areTaskNotificationsEnabled(context)) return
+
         val taskId = intent.getLongExtra(TaskReminderScheduler.EXTRA_TASK_ID, -1L)
         if (taskId == -1L) return
         val task = AppDatabase.getDatabase(context).taskDao().getTaskById(taskId) ?: return
@@ -66,28 +68,51 @@ class TaskReminderReceiver : BroadcastReceiver() {
         )
     }
 
-    private suspend fun showDailyPlan(context: Context) {
+    private suspend fun showMorningPlan(context: Context) {
+        if (!NotificationSettings.isMorningEnabled(context)) return
+
         val activeTasks = AppDatabase.getDatabase(context).taskDao().getActiveTasks().first()
         val todayTasks = activeTasks.filter { task ->
             task.dueDate?.isToday() == true
         }
-        if (todayTasks.isEmpty()) return
-
-        val topTask = TaskPrioritizer.sortSmart(todayTasks).first()
-        showNotification(
-            context = context,
-            notificationId = 10_001,
-            title = context.getString(R.string.notification_daily_title),
-            text = context.getString(R.string.notification_daily_text, todayTasks.size, topTask.title)
-        )
+        if (todayTasks.isEmpty()) {
+            showNotification(
+                context = context,
+                notificationId = 10_001,
+                title = context.getString(R.string.notification_morning_empty_title),
+                text = context.getString(R.string.notification_morning_empty_text)
+            )
+        } else {
+            val topTask = TaskPrioritizer.sortSmart(todayTasks).first()
+            showNotification(
+                context = context,
+                notificationId = 10_001,
+                title = context.getString(R.string.notification_morning_plan_title),
+                text = context.getString(R.string.notification_morning_plan_text, todayTasks.size, topTask.title)
+            )
+        }
     }
 
-    private fun showDebugNotification(context: Context) {
+    private suspend fun showEveningSummary(context: Context) {
+        if (!NotificationSettings.isEveningEnabled(context)) return
+
+        val tasks = AppDatabase.getDatabase(context).taskDao().getAllTasks().first()
+        val completedToday = tasks.count { task -> task.completedAt?.isToday() == true }
+        val title = if (completedToday > 0) {
+            context.getString(R.string.notification_evening_done_title)
+        } else {
+            context.getString(R.string.notification_evening_empty_title)
+        }
+        val text = if (completedToday > 0) {
+            context.getString(R.string.notification_evening_done_text, completedToday)
+        } else {
+            context.getString(R.string.notification_evening_empty_text)
+        }
         showNotification(
             context = context,
-            notificationId = 30_000,
-            title = "Тест уведомления",
-            text = "Уведомление TimeQuest работает в фоне."
+            notificationId = 10_002,
+            title = title,
+            text = text
         )
     }
 

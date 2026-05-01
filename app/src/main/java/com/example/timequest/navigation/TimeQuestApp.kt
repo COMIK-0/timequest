@@ -41,7 +41,13 @@ fun TimeQuestApp(
     unlockedThemeStyles: Set<AppThemeStyle>,
     spentXp: Int,
     onThemeStyleChange: (AppThemeStyle) -> Unit,
-    onThemeStylePurchase: (AppThemeStyle, Int) -> Unit
+    onThemeStylePurchase: (AppThemeStyle, Int) -> Unit,
+    morningNotificationEnabled: Boolean,
+    eveningNotificationEnabled: Boolean,
+    taskNotificationsEnabled: Boolean,
+    onMorningNotificationChange: (Boolean) -> Unit,
+    onEveningNotificationChange: (Boolean) -> Unit,
+    onTaskNotificationsChange: (Boolean) -> Unit
 ) {
     val navController = rememberNavController()
     val navigationGuardState = remember { NavigationGuardState() }
@@ -105,7 +111,13 @@ fun TimeQuestApp(
                 unlockedThemeStyles = unlockedThemeStyles,
                 spentXp = spentXp,
                 onThemeStyleChange = onThemeStyleChange,
-                onThemeStylePurchase = onThemeStylePurchase
+                onThemeStylePurchase = onThemeStylePurchase,
+                morningNotificationEnabled = morningNotificationEnabled,
+                eveningNotificationEnabled = eveningNotificationEnabled,
+                taskNotificationsEnabled = taskNotificationsEnabled,
+                onMorningNotificationChange = onMorningNotificationChange,
+                onEveningNotificationChange = onEveningNotificationChange,
+                onTaskNotificationsChange = onTaskNotificationsChange
             )
             if (showFocusShortcut) {
                 FocusShortcutButton(

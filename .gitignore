@@ -24,3 +24,6 @@ externalNativeBuild/
 
 # Logs
 *.log
+
+# Local Codex instructions
+AGENTS.md

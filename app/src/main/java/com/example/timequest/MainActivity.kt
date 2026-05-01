@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.timequest.data.local.AppDatabase
 import com.example.timequest.data.repository.TaskRepository
 import com.example.timequest.navigation.TimeQuestApp
+import com.example.timequest.notifications.NotificationSettings
 import com.example.timequest.notifications.TaskReminderScheduler
 import com.example.timequest.presentation.tasks.TaskViewModel
 import com.example.timequest.ui.theme.AppThemeMode
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
         getSharedPreferences("notification_permission", MODE_PRIVATE)
     }
     private val settingsPrefs by lazy {
+        // TODO: Move theme settings to DataStore Preferences when the project is ready for a small persistence migration.
         getSharedPreferences("timequest_settings", MODE_PRIVATE)
     }
 
@@ -48,7 +50,7 @@ class MainActivity : ComponentActivity() {
         handleFocusIntent(intent)
         TaskReminderScheduler.createNotificationChannel(this)
         TaskReminderScheduler.ensureExactAlarmPermission(this)
-        TaskReminderScheduler.scheduleDailyPlan(this)
+        TaskReminderScheduler.scheduleDailyNotifications(this)
         requestNotificationPermissionIfNeeded()
 
         val repository = TaskRepository(
@@ -63,6 +65,15 @@ class MainActivity : ComponentActivity() {
             var themeStyle by remember { mutableStateOf(readThemeStyle()) }
             var unlockedThemeStyles by remember { mutableStateOf(readUnlockedThemeStyles()) }
             var spentXp by remember { mutableStateOf(readSpentXp()) }
+            var morningNotificationEnabled by remember {
+                mutableStateOf(NotificationSettings.isMorningEnabled(this@MainActivity))
+            }
+            var eveningNotificationEnabled by remember {
+                mutableStateOf(NotificationSettings.isEveningEnabled(this@MainActivity))
+            }
+            var taskNotificationsEnabled by remember {
+                mutableStateOf(NotificationSettings.areTaskNotificationsEnabled(this@MainActivity))
+            }
 
             TimeQuestTheme(
                 themeMode = themeMode,
@@ -97,6 +108,31 @@ class MainActivity : ComponentActivity() {
                                 saveSpentXp(updatedSpentXp)
                                 saveThemeStyle(newStyle)
                             }
+                        },
+                        morningNotificationEnabled = morningNotificationEnabled,
+                        eveningNotificationEnabled = eveningNotificationEnabled,
+                        taskNotificationsEnabled = taskNotificationsEnabled,
+                        onMorningNotificationChange = { enabled ->
+                            morningNotificationEnabled = enabled
+                            NotificationSettings.setMorningEnabled(this@MainActivity, enabled)
+                            if (enabled) {
+                                TaskReminderScheduler.scheduleDailyNotifications(this@MainActivity)
+                            } else {
+                                TaskReminderScheduler.cancelMorningNotification(this@MainActivity)
+                            }
+                        },
+                        onEveningNotificationChange = { enabled ->
+                            eveningNotificationEnabled = enabled
+                            NotificationSettings.setEveningEnabled(this@MainActivity, enabled)
+                            if (enabled) {
+                                TaskReminderScheduler.scheduleDailyNotifications(this@MainActivity)
+                            } else {
+                                TaskReminderScheduler.cancelEveningNotification(this@MainActivity)
+                            }
+                        },
+                        onTaskNotificationsChange = { enabled ->
+                            taskNotificationsEnabled = enabled
+                            NotificationSettings.setTaskNotificationsEnabled(this@MainActivity, enabled)
                         }
                     )
                 }

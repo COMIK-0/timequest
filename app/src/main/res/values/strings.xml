@@ -113,8 +113,14 @@
     <string name="no_recommended_tasks">На сегодня нет задач с датой.</string>
 
     <string name="notification_deadline_title">Дата задачи сегодня</string>
-    <string name="notification_daily_title">План на сегодня</string>
-    <string name="notification_daily_text">Сегодня задач: %1$d. Начните с: %2$s</string>
+    <string name="notification_morning_empty_title">Пора спланировать день</string>
+    <string name="notification_morning_empty_text">Добавьте задачи на сегодня и заработайте XP.</string>
+    <string name="notification_morning_plan_title">План на сегодня</string>
+    <string name="notification_morning_plan_text">Сегодня задач: %1$d. Начните с: %2$s.</string>
+    <string name="notification_evening_done_title">Итог дня</string>
+    <string name="notification_evening_done_text">Сегодня выполнено задач: %1$d. Отличная работа!</string>
+    <string name="notification_evening_empty_title">День ещё можно спасти</string>
+    <string name="notification_evening_empty_text">Выполните хотя бы одну задачу и сохраните серию.</string>
     <string name="notification_scheduled_title">Скоро задача</string>
     <string name="notification_scheduled_text">Через 5 минут: %1$s</string>
     <string name="calendar_title">Календарь</string>

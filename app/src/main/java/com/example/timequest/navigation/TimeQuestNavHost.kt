@@ -34,7 +34,13 @@ fun TimeQuestNavHost(
     unlockedThemeStyles: Set<AppThemeStyle>,
     spentXp: Int,
     onThemeStyleChange: (AppThemeStyle) -> Unit,
-    onThemeStylePurchase: (AppThemeStyle, Int) -> Unit
+    onThemeStylePurchase: (AppThemeStyle, Int) -> Unit,
+    morningNotificationEnabled: Boolean,
+    eveningNotificationEnabled: Boolean,
+    taskNotificationsEnabled: Boolean,
+    onMorningNotificationChange: (Boolean) -> Unit,
+    onEveningNotificationChange: (Boolean) -> Unit,
+    onTaskNotificationsChange: (Boolean) -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -211,7 +217,13 @@ fun TimeQuestNavHost(
                 unlockedThemeStyles = unlockedThemeStyles,
                 spentXp = spentXp,
                 onThemeStyleChange = onThemeStyleChange,
-                onThemeStylePurchase = onThemeStylePurchase
+                onThemeStylePurchase = onThemeStylePurchase,
+                morningNotificationEnabled = morningNotificationEnabled,
+                eveningNotificationEnabled = eveningNotificationEnabled,
+                taskNotificationsEnabled = taskNotificationsEnabled,
+                onMorningNotificationChange = onMorningNotificationChange,
+                onEveningNotificationChange = onEveningNotificationChange,
+                onTaskNotificationsChange = onTaskNotificationsChange
             )
         }
     }

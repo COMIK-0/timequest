@@ -1,5 +1,12 @@
 package com.example.timequest.presentation.tasks.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +54,7 @@ import com.example.timequest.R
 import com.example.timequest.data.local.TaskEntity
 import com.example.timequest.domain.GamificationManager
 import com.example.timequest.presentation.components.AppChip
+import com.example.timequest.presentation.components.DifficultyChip
 import com.example.timequest.presentation.components.PriorityChip
 import com.example.timequest.presentation.components.XpBadge
 import com.example.timequest.presentation.components.priorityColor
@@ -74,8 +83,24 @@ fun TaskCard(
         "Отметить задачу ${task.title} выполненной"
     }
 
+    val completionAlpha by animateFloatAsState(
+        targetValue = if (task.isCompleted) 0.74f else 1f,
+        label = "task completion alpha"
+    )
+    val completionScale by animateFloatAsState(
+        targetValue = if (task.isCompleted) 0.985f else 1f,
+        label = "task completion scale"
+    )
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                alpha = completionAlpha
+                scaleX = completionScale
+                scaleY = completionScale
+            }
+            .animateContentSize(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -195,15 +220,26 @@ fun TaskCard(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     XpBadge(xp = taskXp)
+                    if (task.category.isNotBlank()) {
+                        AppChip(text = task.category, color = MaterialTheme.colorScheme.secondary)
+                    }
                     PriorityChip(priority = task.priority)
+                    DifficultyChip(difficulty = task.difficulty)
                     if (task.scheduledStartTime != null && task.scheduledEndTime != null) {
                         AppChip(
-                            text = "${formatTime(task.scheduledStartTime)}-${formatTime(task.scheduledEndTime)}",
+                            text = "${formatTime(task.scheduledStartTime)}–${formatTime(task.scheduledEndTime)}",
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    if (task.category.isNotBlank()) {
-                        AppChip(text = task.category, color = MaterialTheme.colorScheme.secondary)
+                    AnimatedVisibility(
+                        visible = task.isCompleted && task.xpAwarded,
+                        enter = fadeIn() + scaleIn(initialScale = 0.92f),
+                        exit = fadeOut() + scaleOut(targetScale = 0.92f)
+                    ) {
+                        AppChip(
+                            text = "+$taskXp XP",
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
 
@@ -247,7 +283,7 @@ fun TaskCard(
                     }
                 }
 
-                if (!task.isCompleted && task.dueDate?.isOverdue() == true) {
+                AnimatedVisibility(visible = !task.isCompleted && task.dueDate?.isOverdue() == true) {
                     Text(
                         text = "Просрочено. Начните с 15 минут или перенесите в план.",
                         style = MaterialTheme.typography.bodySmall,
